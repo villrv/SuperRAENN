@@ -145,6 +145,8 @@ class LightCurve(object):
 			dense_errs[:,int(jj)] = np.sqrt(pred_var[gind])
 		self.dense_lc = np.dstack((dense_fluxes,dense_errs))
 		gp.recompute()
+		self.gp = gp
+		self.gp_mags = gp_mags
 		return gp, gp_mags
 		#Need except statementgp.set_parameter_vector([1,100,1])
 
