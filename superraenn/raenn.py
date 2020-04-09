@@ -225,12 +225,11 @@ def main():
 	lm = outseq[1,0,1]
 	lms = outseq[:,0,1]
 
-	test_model(sequence_test,model,lm, maxlen, plot=True)
+	#test_model(sequence_test,model,lm, maxlen, plot=True)
 	encoder = get_encoder(model,input_1, encoded)
 	decoder = get_decoder(model, args.encodingN)
 	get_decodings(decoder,encoder, sequence,lms, args.encodingN, \
-					maxlen, plot=True)
-	sys.exit()
+					maxlen, plot=False)
 
 	save_model(model, args.encodingN, args.neuronN)
 
