@@ -1,5 +1,5 @@
 import numpy as np
-from lc import LightCurve
+from .lc import LightCurve
 
 def read_in_LC_files(input_files,obj_names, style='SNANA'):
 	"""

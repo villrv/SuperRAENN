@@ -1,11 +1,6 @@
-import sys
-sys.path.append("..")
-
-#For testing, use python3 preprocess.py /Volumes/My\ Passport/ps1_sne/all_lcs/output_lc/ /Users/ashley/Dropbox/Research/ml_ps1_full/nn_clean/superraenn_tester/meta_table_040720.dat
-
 from argparse import ArgumentParser
 import numpy as np
-from feature_extraction import read_in_LC_files
+from .feature_extraction import read_in_LC_files
 import logging
 import datetime
 
@@ -37,7 +32,7 @@ def main():
 	parser.add_argument('metatable', type=str, help='Metatable containing each object, redshift, peak time guess, mwebv, object type')
 	parser.add_argument('--zpt', type=float, default=DEFAULT_ZPT, help='Zero point of LCs')
 	parser.add_argument('--lm', type=float, default=DEFAULT_LIM_MAG, help='Survey limiting magnitude')
-	parser.add_argument('--outdir', type=str, default='.', help='Path in which to save the LC data (single file)')
+	parser.add_argument('--outdir', type=str, default='./', help='Path in which to save the LC data (single file)')
 	args = parser.parse_args()
 
 	objs, redshifts, obj_types, peaks, ebvs = \
@@ -53,7 +48,6 @@ def main():
 
 
 	my_lcs = []
-	lc_list=lc_list[0:2]
 	for i,my_lc in enumerate(lc_list):
 		my_lc.add_LC_info(zpt = args.zpt, mwebv = ebvs[i], \
 							redshift = redshifts[i], lim_mag = args.lm, \

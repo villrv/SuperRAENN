@@ -115,6 +115,7 @@ class LightCurve(object):
 		k_correction = 2.5 * np.log10(1.+self.redshift)
 		dist = cosmo.luminosity_distance([self.redshift]).value[0] #returns dist in Mpc
 		gp_mags = self.abs_mags - self.abs_lim_mag
+		print(self.name,self.abs_mags, self.abs_lim_mag)
 		int_filts = np.asarray(self.filters,dtype=int)
 		dense_fluxes = np.zeros((len(self.times),nfilts))
 		dense_errs = np.zeros((len(self.times),nfilts))
