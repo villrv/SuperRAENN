@@ -1,6 +1,9 @@
 import numpy as np
 from .lc import LightCurve
-
+from .raenn import prep_input, get_encoder, get_decoder, get_decodings
+from argparse import ArgumentParser
+from keras.models import model_from_json, Model
+from keras.layers import Input
 def read_in_LC_files(input_files,obj_names, style='SNANA'):
 	"""
 	Read in LC files and convert to LC object
@@ -39,6 +42,36 @@ def read_in_LC_files(input_files,obj_names, style='SNANA'):
 		raise ValueError('Sorry, you need to specify a data style.')
 	return LC_list
 
+
+def feat_from_raenn(data_file, model_base = None, \
+					prep_file = None, generate = True):
+	if generate:
+		sequence, outseq, ids, maxlen, nfilts = prep_input(data_file,load=True, prep_file=prep_file)
+		model_file = model_base + '.json'
+		model_weight_file = model_base+'.h5'
+		with open(model_file, 'r') as f:
+			model = model_from_json(f.read())
+		model.load_weights(model_weight_file)
+
+		encodingN = model.layers[2].output_shape[1]
+		encoded_input = Input(shape=(None,(encodingN+2)))
+		original_input = Input(shape=(None,nfilts*2+1))
+		decoder_layer2 = model.layers[-2]
+		decoder_layer3 = model.layers[-1]
+		merged = model.layers[-3]
+		repeater = model.layers[-4]
+		encoded = model.layers[2]
+		encoded1 = model.layers[1]
+
+		#test_model(sequence_test,model,lm, maxlen, plot=True)
+		encoder = Model(input=original_input, output=encoded(encoded1(original_input)))
+		encodings = np.zeros((len(ids),encodingN))
+		for i in np.arange(len(ids)):
+			inseq = np.reshape(sequence[i,:,:],(1,maxlen,nfilts*2+1))
+			my_encoding = encoder.predict(inseq)
+			encodings[i,:] = my_encoding
+			encoder.reset_states() 
+		return encodings
 
 def feat_peaks(input_lcs):
 	"""
@@ -118,7 +151,6 @@ def feat_slope(input_lcs, gps, gp_mags_list, t_min_lim=10, \
 		slopes_all.append(slopes)
 	return slopes_all
 
-
 def feat_int(input_lcs, gps, gp_mags_list, nfilts=4):
 	ints_all = []
 	for i,input_lc in enumerate(input_lcs):
@@ -133,3 +165,23 @@ def feat_int(input_lcs, gps, gp_mags_list, nfilts=4):
 
 		ints_all.append(ints)
 	return ints_all
+
+
+def main():
+	parser = ArgumentParser()
+	parser.add_argument('lcfile', type=str, help='Light curve file')
+	parser.add_argument('--outdir', type=str, default='.', help='Path in which to save the LC data (single file)')
+	parser.add_argument('--plot', type=bool, default = False, help='Plot LCs')
+	parser.add_argument('--model-base', type=str, dest='model_base', default = '', help='...')
+	parser.add_argument('--feat-encode', type=bool, dest='feat_encode', default=True, help='...')
+	parser.add_argument('--prep-file', type=str, dest='prep_file', default='', help='...')
+
+	args = parser.parse_args()
+
+	if args.feat_encode:
+		print(feat_from_raenn(args.lcfile,model_base = args.model_base, prep_file=args.prep_file))
+
+	
+
+if __name__ == '__main__':
+	main()

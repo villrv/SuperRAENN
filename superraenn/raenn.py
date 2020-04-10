@@ -16,15 +16,18 @@ import datetime
 import os
 import logging
 
+now = datetime.datetime.now()
+date = str(now.strftime("%Y-%m-%d"))
 
 NEURON_N_DEFAULT = 140
 ENCODING_N_DEFAULT = 10
-N_EPOCH_DEFAULT = 10
+N_EPOCH_DEFAULT = 1
 
 def customLoss(yTrue,yPred):
 	return K.mean(K.square(yTrue[:,:,1:5] - yPred[:,:,:]))
 
-def prep_input(input_lc_file, new_t_max=100.0, filler_err = 1.0):
+def prep_input(input_lc_file, new_t_max=100.0, filler_err = 1.0, 
+				save = False, load=False, outdir = None, prep_file=None):
 	lightcurves = np.load(input_lc_file,allow_pickle=True)['lcs']
 
 	lengths = []
@@ -52,8 +55,13 @@ def prep_input(input_lc_file, new_t_max=100.0, filler_err = 1.0):
 
 	#Flip because who needs negative magnitudes
 	sequence[:,:,1:nfiltsp1] = -1.0 * sequence[:,:,1:nfiltsp1]
-	bandmin = np.min(sequence[:,:,1:nfiltsp1])
-	bandmax = np.max(sequence[:,:,1:nfiltsp1])
+	if load:
+		prep_data = np.load(prep_file)
+		bandmin = prep_data['bandmin']
+		bandmax = prep_data['bandmax']
+	else:
+		bandmin = np.min(sequence[:,:,1:nfiltsp1])
+		bandmax = np.max(sequence[:,:,1:nfiltsp1])
 	sequence[:,:,1:nfiltsp1] = (sequence[:,:,1:nfiltsp1] - bandmin) \
 							/ (bandmax - bandmin) 
 	sequence[:,:,nfiltsp1:] = (sequence[:,:,nfiltsp1:] - bandmin) \
@@ -63,6 +71,10 @@ def prep_input(input_lc_file, new_t_max=100.0, filler_err = 1.0):
 	outseq = np.reshape(sequence[:,:,0],(len(sequence),sequence_len,1))\
 							 * 1.0
 	outseq = np.dstack((outseq,new_lms))
+	if save:
+		model_prep_file = outdir+'prep_'+date+'.npz'
+		print(model_prep_file)
+		np.savez(model_prep_file, bandmin=bandmin, bandmax=bandmax)
 	return sequence, outseq, ids, sequence_len, nfilts
 
 #Scheduler
@@ -161,8 +173,6 @@ def save_model(model, encodingN, LSTMN, model_dir = './models/'):
 		os.makedirs(model_dir)
 
 	# serialize model to JSON
-	now = datetime.datetime.now()
-	date = str(now.strftime("%Y-%m-%d"))
 	model_json = model.to_json()
 	with open(model_dir+"model_"+date+"_"+str(encodingN)+'_'+str(LSTMN)+".json", "w") as json_file:
 		json_file.write(model_json)
@@ -178,8 +188,6 @@ def save_encodings(model,encoder, sequence, ids, INPUT_FILE,
 	if not os.path.exists(model_dir):
 		os.makedirs(model_dir)
 
-	now = datetime.datetime.now()
-	date = str(now.strftime("%Y-%m-%d"))
 	encodings = np.zeros((N,encodingN))
 	for i in np.arange(N):
 		seq = np.reshape(sequence[i,:,:],(1,sequence_len,9))
@@ -199,7 +207,7 @@ def save_encodings(model,encoder, sequence, ids, INPUT_FILE,
 def main():
 	parser = ArgumentParser()
 	parser.add_argument('lcfile', type=str, help='Light curve file')
-	parser.add_argument('--outdir', type=str, default='.', help='Path in which to save the LC data (single file)')
+	parser.add_argument('--outdir', type=str, default='./', help='Path in which to save the LC data (single file)')
 	parser.add_argument('--plot', type=bool, default = False, help='Plot LCs')
 	parser.add_argument('--neuronN', type=int, default = NEURON_N_DEFAULT, help='Number of neurons in hidden layers')
 	parser.add_argument('--encodingN', type=int, default = ENCODING_N_DEFAULT, help='Number of neurons in encoding layer')
@@ -207,7 +215,8 @@ def main():
 
 	args = parser.parse_args()
 
-	sequence, outseq, ids, maxlen, nfilts = prep_input(args.lcfile)
+	sequence, outseq, ids, maxlen, nfilts = prep_input(args.lcfile, save=True, outdir=args.outdir)
+
 	if args.plot:
 		for s in sequence:
 			plt.plot(s[:,0],s[:,1])
