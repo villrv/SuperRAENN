@@ -4,6 +4,11 @@ from .raenn import prep_input, get_encoder, get_decoder, get_decodings
 from argparse import ArgumentParser
 from keras.models import model_from_json, Model
 from keras.layers import Input
+import datetime
+
+now = datetime.datetime.now()
+date = str(now.strftime("%Y-%m-%d"))
+
 def read_in_LC_files(input_files,obj_names, style='SNANA'):
 	"""
 	Read in LC files and convert to LC object
@@ -95,19 +100,19 @@ def feat_peaks(input_lcs):
 		peaks.append(np.nanmin(input_lc.dense_lc[:,:,0],axis=0))
 	return peaks
 
-def feat_rise_and_decline(input_lcs, gps, gp_mags_list,n_mag,nfilts=4):
+def feat_rise_and_decline(input_lcs, n_mag,nfilts=4):
 
 	t_falls_all = []
 	t_rises_all = []
 
 	for i,input_lc in enumerate(input_lcs):
-		gp = gps[i]
-		gp_mags = gp_mags_list[i]
+		gp = input_lc.gp
+		gp_mags = input_lc.gp_mags
 		t_falls = []
 		t_rises = []
 		for j in np.arange(nfilts):
-			new_times = np.linspace(-100,100,1000)
-			x_stacked = np.asarray([new_times,[j]*1000]).T
+			new_times = np.linspace(-100,100,200)
+			x_stacked = np.asarray([new_times,[j]*200]).T
 			pred,var = gp.predict(gp_mags,x_stacked)
 
 			max_ind = np.nanargmin(pred)
@@ -130,16 +135,16 @@ def feat_rise_and_decline(input_lcs, gps, gp_mags_list,n_mag,nfilts=4):
 		t_rises_all.append(t_rises)
 	return t_rises_all, t_falls_all
 
-def feat_slope(input_lcs, gps, gp_mags_list, t_min_lim=10, \
+def feat_slope(input_lcs, t_min_lim=10, \
 				t_max_lim=30, nfilts=4):
 	slopes_all = []
 	for i,input_lc in enumerate(input_lcs):
-		gp = gps[i]
-		gp_mags = gp_mags_list[i]
+		gp = input_lc.gp
+		gp_mags = input_lc.gp_mags
 		slopes = []
 		for j in np.arange(nfilts):
-			new_times = np.linspace(-100,100,1000)
-			x_stacked = np.asarray([new_times,[j]*1000]).T
+			new_times = np.linspace(-100,100,200)
+			x_stacked = np.asarray([new_times,[j]*200]).T
 			pred,var = gp.predict(gp_mags,x_stacked)
 			max_ind = np.nanargmin(pred)
 			max_mag = pred[max_ind]
@@ -151,36 +156,116 @@ def feat_slope(input_lcs, gps, gp_mags_list, t_min_lim=10, \
 		slopes_all.append(slopes)
 	return slopes_all
 
-def feat_int(input_lcs, gps, gp_mags_list, nfilts=4):
+def feat_int(input_lcs, nfilts=4):
 	ints_all = []
 	for i,input_lc in enumerate(input_lcs):
-		gp = gps[i]
-		gp_mags = gp_mags_list[i]
+		gp = input_lc.gp
+		gp_mags = input_lc.gp_mags
 		ints = []
 		for j in np.arange(nfilts):
-			new_times = np.linspace(-100,100,1000)
-			x_stacked = np.asarray([new_times,[j]*1000]).T
+			new_times = np.linspace(-100,100,200)
+			x_stacked = np.asarray([new_times,[j]*200]).T
 			pred,var = gp.predict(gp_mags,x_stacked)
 			ints.append(np.trapz(pred))
 
 		ints_all.append(ints)
 	return ints_all
 
+def save_features(features, ids, feat_names, outputfile):
+	np.savez(outputfile, features=features, ids=ids, feat_names=feat_names)
 
 def main():
 	parser = ArgumentParser()
 	parser.add_argument('lcfile', type=str, help='Light curve file')
-	parser.add_argument('--outdir', type=str, default='.', help='Path in which to save the LC data (single file)')
+	parser.add_argument('--outdir', type=str, default='./', help='Path in which to save the LC data (single file)')
 	parser.add_argument('--plot', type=bool, default = False, help='Plot LCs')
 	parser.add_argument('--model-base', type=str, dest='model_base', default = '', help='...')
-	parser.add_argument('--feat-encode', type=bool, dest='feat_encode', default=True, help='...')
+	parser.add_argument('--get-feat-from-raenn', type=bool, dest='get_feat_from_raenn', default=True, help='...')
+	parser.add_argument('--get-feat-peaks', type=bool, dest='get_feat_peaks', default=True, help='...')
+	parser.add_argument('--get-feat-rise-decline-1', type=bool, dest='get_feat_rise_decline1', default=True, help='...')
+	parser.add_argument('--get-feat-rise-decline-2', type=bool, dest='get_feat_rise_decline2', default=True, help='...')
+	parser.add_argument('--get-feat-slope', type=bool, dest='get_feat_slope', default=True, help='...')
+	parser.add_argument('--get-feat-int', type=bool, dest='get_feat_int', default=True, help='...')
 	parser.add_argument('--prep-file', type=str, dest='prep_file', default='', help='...')
 
+
 	args = parser.parse_args()
+	features = []
 
-	if args.feat_encode:
-		print(feat_from_raenn(args.lcfile,model_base = args.model_base, prep_file=args.prep_file))
+	input_lcs = np.load(args.lcfile, allow_pickle=True)['lcs']
+	ids = []
+	feat_names = []
+	for input_lc in input_lcs:
+		ids.append(input_lc.name)
+	if args.get_feat_from_raenn:
+		feat = feat_from_raenn(args.lcfile,model_base = args.model_base, prep_file=args.prep_file)
+		if features != []:
+			features = np.hstack((features,feat))
+		else:
+			features = feat
+		for i in np.arange(np.shape(feat)[-1]):
+			feat_names.append('raenn'+str(i))
+		print('RAENN feat done')
 
+	if args.get_feat_peaks:
+		feat = feat_peaks(input_lcs)
+		if features != []:
+			features = np.hstack((features,feat))
+		else:
+			features = feat
+		for i in np.arange(np.shape(feat)[-1]):
+			feat_names.append('peak'+str(i))
+		print('peak feat done')
+
+	if args.get_feat_rise_decline1:
+		feat1, feat2 = feat_rise_and_decline(input_lcs,1)
+		if features != []:
+			features = np.hstack((features,feat1))
+			features = np.hstack((features,feat2))
+		else:
+			features = np.hstack((feat1,feat2))
+		for i in np.arange(np.shape(feat)[-1]):
+			feat_names.append('rise1'+str(i))
+		for i in np.arange(np.shape(feat)[-1]):
+			feat_names.append('decline1'+str(i))
+		print('dur1 feat done')
+
+	if args.get_feat_rise_decline2:
+		feat1, feat2 = feat_rise_and_decline(input_lcs,2)
+		if features != []:
+			features = np.hstack((features,feat1))
+			features = np.hstack((features,feat2))
+		else:
+			features = np.hstack((feat1,feat2))
+		for i in np.arange(np.shape(feat)[-1]):
+			feat_names.append('rise2'+str(i))
+		for i in np.arange(np.shape(feat)[-1]):
+			feat_names.append('decline2'+str(i))
+		print('dur2 feat done')
+
+	if args.get_feat_slope:
+		feat = feat_slope(input_lcs)
+		if features != []:
+			features = np.hstack((features,feat))
+		else:
+			features = feat
+		for i in np.arange(np.shape(feat)[-1]):
+			feat_names.append('slope'+str(i))
+		print('slope feat done')
+
+	if args.get_feat_int:
+		feat = feat_int(input_lcs)
+		if features != []:
+			features = np.hstack((features,feat))
+		else:
+			features = feat
+		for i in np.arange(np.shape(feat)[-1]):
+			feat_names.append('int'+str(i))
+		print('int feat done')
+
+	print(np.shape(features))
+	print(features)
+	save_features(features, ids,feat_names, './features_'+date+'.npz')
 	
 
 if __name__ == '__main__':
