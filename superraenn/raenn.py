@@ -21,10 +21,10 @@ date = str(now.strftime("%Y-%m-%d"))
 
 NEURON_N_DEFAULT = 140
 ENCODING_N_DEFAULT = 10
-N_EPOCH_DEFAULT = 1
+N_EPOCH_DEFAULT = 10
 
 def customLoss(yTrue,yPred):
-	return K.mean(K.square(yTrue[:,:,1:5] - yPred[:,:,:]))
+	return K.mean(K.square(yTrue[:,:,1:5] - yPred[:,:,:]) * yTrue[:,:,5:])
 
 def prep_input(input_lc_file, new_t_max=100.0, filler_err = 1.0, 
 				save = False, load=False, outdir = None, prep_file=None):
@@ -55,6 +55,7 @@ def prep_input(input_lc_file, new_t_max=100.0, filler_err = 1.0,
 
 	#Flip because who needs negative magnitudes
 	sequence[:,:,1:nfiltsp1] = -1.0 * sequence[:,:,1:nfiltsp1]
+
 	if load:
 		prep_data = np.load(prep_file)
 		bandmin = prep_data['bandmin']
@@ -62,10 +63,19 @@ def prep_input(input_lc_file, new_t_max=100.0, filler_err = 1.0,
 	else:
 		bandmin = np.min(sequence[:,:,1:nfiltsp1])
 		bandmax = np.max(sequence[:,:,1:nfiltsp1])
+
 	sequence[:,:,1:nfiltsp1] = (sequence[:,:,1:nfiltsp1] - bandmin) \
 							/ (bandmax - bandmin) 
-	sequence[:,:,nfiltsp1:] = (sequence[:,:,nfiltsp1:] - bandmin) \
+	sequence[:,:,nfiltsp1:] = (sequence[:,:,nfiltsp1:]) \
 							/ (bandmax - bandmin) 
+
+	sequence = np.asarray(sequence)
+	sequence[:,:,nfiltsp1:] = sequence[:,:,nfiltsp1:]**-2
+	bind = np.where(np.isinf(sequence[:,:,nfiltsp1:]))
+	sequence[:,:,nfiltsp1:][bind] = 0.0
+	bind = np.where(np.isnan(sequence[:,:,nfiltsp1:]))
+	sequence[:,:,nfiltsp1:][bind] = 0.0
+
 	new_lms = np.reshape(np.repeat(lms,sequence_len),(len(lms),-1))
 
 	outseq = np.reshape(sequence[:,:,0],(len(sequence),sequence_len,1))\
@@ -237,8 +247,8 @@ def main():
 	#test_model(sequence_test,model,lm, maxlen, plot=True)
 	encoder = get_encoder(model,input_1, encoded)
 	decoder = get_decoder(model, args.encodingN)
-	get_decodings(decoder,encoder, sequence,lms, args.encodingN, \
-					maxlen, plot=False)
+	#get_decodings(decoder,encoder, sequence,lms, args.encodingN, \
+	#				maxlen, plot=False)
 
 	save_model(model, args.encodingN, args.neuronN)
 

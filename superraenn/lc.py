@@ -140,6 +140,10 @@ class LightCurve(object):
 			x_pred[jj*nfilts:jj*nfilts+nfilts,0] = [time]*nfilts
 			x_pred[jj*nfilts:jj*nfilts+nfilts,1] = np.arange(nfilts)
 		pred, pred_var = gp.predict(gp_mags, x_pred, return_var=True)
+		plt.plot(pred)
+		plt.errorbar(pred,yerr=pred_var)
+		plt.show()
+		sys.exit()
 		for jj in np.arange(nfilts):
 			gind = np.where(x_pred[:,1] == jj)[0]
 			dense_fluxes[:,int(jj)] = pred[gind] + self.abs_lim_mag
