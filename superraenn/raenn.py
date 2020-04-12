@@ -116,7 +116,7 @@ def make_model(LSTMN, encodingN, maxlen, nfilts):
 	model.compile(optimizer=new_optimizer, loss=customLoss)
 
 	lrate = LearningRateScheduler(step_decay)
-	es = EarlyStopping(monitor='val_loss', min_delta=0, patience=3, 
+	es = EarlyStopping(monitor='val_loss', min_delta=0, patience=10, 
 						verbose=0, mode='min', baseline=None, 
 						restore_best_weights=True)
 	tnan = TerminateOnNaN()
@@ -239,9 +239,6 @@ def main():
 											args.encodingN, maxlen, nfilts)
 	model = fit_model(model, callbacks_list, sequence, outseq, args.n_epoch)
 	
-	#THIS IS A TEST
-	sequence_test = np.reshape(sequence[1,:,:],(1,maxlen,9))
-	lm = outseq[1,0,1]
 	lms = outseq[:,0,1]
 
 	#test_model(sequence_test,model,lm, maxlen, plot=True)
