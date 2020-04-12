@@ -24,7 +24,7 @@ ENCODING_N_DEFAULT = 10
 N_EPOCH_DEFAULT = 10
 
 def customLoss(yTrue,yPred):
-	return K.mean(K.square(yTrue[:,:,1:5] - yPred[:,:,:]) * yTrue[:,:,5:])
+	return K.mean(K.square(yTrue[:,:,1:5] - yPred[:,:,:]))
 
 def prep_input(input_lc_file, new_t_max=100.0, filler_err = 1.0, 
 				save = False, load=False, outdir = None, prep_file=None):
@@ -68,13 +68,6 @@ def prep_input(input_lc_file, new_t_max=100.0, filler_err = 1.0,
 							/ (bandmax - bandmin) 
 	sequence[:,:,nfiltsp1:] = (sequence[:,:,nfiltsp1:]) \
 							/ (bandmax - bandmin) 
-
-	sequence = np.asarray(sequence)
-	sequence[:,:,nfiltsp1:] = sequence[:,:,nfiltsp1:]**-2
-	bind = np.where(np.isinf(sequence[:,:,nfiltsp1:]))
-	sequence[:,:,nfiltsp1:][bind] = 0.0
-	bind = np.where(np.isnan(sequence[:,:,nfiltsp1:]))
-	sequence[:,:,nfiltsp1:][bind] = 0.0
 
 	new_lms = np.reshape(np.repeat(lms,sequence_len),(len(lms),-1))
 
