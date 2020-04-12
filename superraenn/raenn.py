@@ -50,7 +50,7 @@ def prep_input(input_lc_file, new_t_max=100.0, filler_err = 1.0,
 		sequence[i,0:lengths[i],nfiltsp1:] = lightcurve.dense_lc[:,:,1]
 		sequence[i,lengths[i]:,0] = np.max(lightcurve.times)+new_t_max
 		sequence[i,lengths[i]:,1:nfiltsp1] = lightcurve.abs_lim_mag
-		sequence[i,lengths[i]:,nfiltsp1:] = filler_err
+		sequence[i,lengths[i]:,nfiltsp1:] = filler_err*0.1
 		lms.append(lightcurve.abs_lim_mag)
 
 	#Flip because who needs negative magnitudes
