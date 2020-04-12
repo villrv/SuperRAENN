@@ -109,7 +109,7 @@ def make_model(LSTMN, encodingN, maxlen, nfilts):
 	model.compile(optimizer=new_optimizer, loss=customLoss)
 
 	lrate = LearningRateScheduler(step_decay)
-	es = EarlyStopping(monitor='val_loss', min_delta=0, patience=10, 
+	es = EarlyStopping(monitor='val_loss', min_delta=0, patience=50, 
 						verbose=0, mode='min', baseline=None, 
 						restore_best_weights=True)
 	tnan = TerminateOnNaN()

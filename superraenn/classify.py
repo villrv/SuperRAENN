@@ -7,6 +7,7 @@ from sklearn import preprocessing
 from sklearn.model_selection import LeaveOneOut
 from sklearn.neighbors import KernelDensity
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.inspection import permutation_importance
 
 
 now = datetime.datetime.now()
@@ -68,13 +69,17 @@ def main():
 	parser.add_argument('--metatable', type=str, default='', help='Get training set labels')
 	parser.add_argument('--outdir', type=str, default='./', help='Path in which to save the LC data (single file)')
 	parser.add_argument('--train', type = bool, default = True, help = '...')
+	parser.add_argument('--add-random', dest='add_random',type = bool, default = False, help = '...')
+	parser.add_argument('--calc-importance', dest='calc_importance',type = bool, default = False, help = '...')
+
 	args = parser.parse_args()
 
 	X,y,names, means,stds, feature_names = prep_data_for_training(args.featurefile,args.metatable)
 	names = np.asarray(names,dtype=str)
 	X = X[:,0:10]
 	feature_names = feature_names[0:10]
-
+	if args.add_random:
+		feature_names = np.append(feature_names,'random')
 
 	loo = LeaveOneOut()
 	import matplotlib.pyplot as plt
@@ -89,34 +94,41 @@ def main():
 		np.random.shuffle(new_ind)
 		X_res = X_res[new_ind]
 		y_res = y_res[new_ind]
+		X_res2, y_res2 = KDE_resample(X_train, y_train,400)
+		X_res2 = X_res2[:-40,:]
+		y_res2 = y_res2[:-40]
 
-		clf = RandomForestClassifier(n_estimators=1000, max_depth=None,
+		if args.add_random:
+			X_res = np.vstack((X_res.T,np.random.randn(len(X_res)))).T
+			X_res2 = np.vstack((X_res2.T,np.random.randn(len(X_res2)))).T
+			X_test = np.vstack((X_test.T,np.random.randn(len(X_test)))).T
+
+
+		clf = RandomForestClassifier(n_estimators=300, max_depth=None,
 						random_state=42, criterion='gini',class_weight='balanced',
 									 max_features=None,oob_score=False)
 		clf.fit(X_res,y_res)
 		print(clf.predict_proba(X_test),y_test,names[test_index])
 
-		importane = False
-		if importane:
-			importances = clf.feature_importances_
+		if args.calc_importance:
+			result = permutation_importance(clf, X_res2, y_res2, 
+								n_repeats=10,
+                                random_state=42, n_jobs=2)
 
-			importances = clf.feature_importances_
-			std = np.std([tree.feature_importances_ for tree in clf.estimators_],
-			             axis=0)
-			indices = np.argsort(importances)[::-1]
-
-
-			noise_level = 0.01
+			indices = result.importances_mean.argsort()[::-1]
+			print(result.importances_mean)
 			feature_names = np.asarray(feature_names,dtype=str)
+			importances = result.importances_mean
+			std = result.importances_std
 
 			# Print the feature ranking
 			print("Feature ranking:")
 
-			for f in range(X.shape[1]):
+			for f in range(X_res.shape[1]):
 			    print("%d. feature %d (%f)" % (f + 1, indices[f], importances[indices[f]]))
 
 			plt.ylabel("Feature importances")
-			plt.bar(range(X.shape[1]), importances[indices],
+			plt.bar(range(X_res.shape[1]), importances[indices],
 			       color="grey", yerr=std[indices], align="center")
 			plt.xticks(np.arange(len(importances))+0.5, feature_names[indices],
 						rotation=45,ha='right')

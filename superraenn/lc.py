@@ -37,7 +37,10 @@ class LightCurve(object):
 			self.abs_mags_err = self.abs_mags_err[gind]
 
 	def find_peak(self,tpeak_guess):
-		gind = np.where(np.abs(self.times-tpeak_guess)<100.0)
+		gind = np.where((np.abs(self.times-tpeak_guess)<100.0) & \
+						(self.fluxes/self.flux_errs > 3.0)	)
+		if len(gind[0]) == 0:
+			gind = np.where((np.abs(self.times-tpeak_guess)<100.0))
 		if self.abs_mags is not None:
 			tpeak = self.times[gind][np.argmin(self.abs_mags[gind])]
 		return tpeak
