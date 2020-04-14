@@ -2,6 +2,7 @@ from astropy.cosmology import Planck13 as cosmo
 import numpy as np
 import scipy
 import george
+import extinction
 
 class LightCurve(object):
 	"""Light Curve class
@@ -45,8 +46,9 @@ class LightCurve(object):
 			tpeak = self.times[gind][np.argmin(self.abs_mags[gind])]
 		return tpeak
 
-	def cut_lc(self,limit=100):
-		gind = np.where(np.abs(self.times)<limit)
+	def cut_lc(self,limit_before = 70, limit_after = 200):
+		gind = np.where((self.times> -limit_before) & \
+					(self.times<limit_after))
 		self.times = self.times[gind]
 		self.fluxes = self.fluxes[gind]
 		self.flux_errs = self.flux_errs[gind]
@@ -57,6 +59,16 @@ class LightCurve(object):
 
 	def shift_lc(self,t0=0):
 		self.times = self.times - t0
+
+	def correct_time_dilation(self):
+		self.times = self.times / (1.+self.redshift)
+
+	def correct_extinction(self, wvs):
+		alams = extinction.fm07(wvs, self.mwebv)
+		for i,alam in enumerate(alams):
+			gind = np.where(self.filters == str(i))
+			self.abs_mags[gind] = self.abs_mags[gind] - alam
+
 
 	def add_LC_info(self, zpt = 27.5, mwebv = 0.0, redshift = 0.0, 
 					lim_mag = 25.0, obj_type = '-'):

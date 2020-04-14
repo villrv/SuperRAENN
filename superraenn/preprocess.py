@@ -45,6 +45,7 @@ def main():
 
 	lc_list = read_in_LC_files(file_names,objs)
 	filt_dict = {'g':0,'r':1,'i':2,'z':3}
+	wvs = np.asarray([5460,6800,7450,8700])
 
 
 	my_lcs = []
@@ -57,8 +58,10 @@ def main():
 		my_lc.sort_lc()
 		pmjd = my_lc.find_peak(peaks[i])
 		my_lc.shift_lc(pmjd)
-		my_lc.cut_lc(100)
+		my_lc.correct_time_dilation()
 		my_lc.filter_names_to_numbers(filt_dict)
+		my_lc.correct_extinction(wvs)
+		my_lc.cut_lc()
 		my_lc.make_dense_LC(4)
 		my_lcs.append(my_lc)
 

@@ -9,6 +9,17 @@ import datetime
 now = datetime.datetime.now()
 date = str(now.strftime("%Y-%m-%d"))
 
+
+def str2bool(v):
+    if isinstance(v, bool):
+       return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1', 'True'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0', 'False'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 def read_in_LC_files(input_files,obj_names, style='SNANA'):
 	"""
 	Read in LC files and convert to LC object
@@ -111,8 +122,8 @@ def feat_rise_and_decline(input_lcs, n_mag,nfilts=4):
 		t_falls = []
 		t_rises = []
 		for j in np.arange(nfilts):
-			new_times = np.linspace(-100,100,200)
-			x_stacked = np.asarray([new_times,[j]*200]).T
+			new_times = np.linspace(-100,100,500)
+			x_stacked = np.asarray([new_times,[j]*500]).T
 			pred,var = gp.predict(gp_mags,x_stacked)
 
 			max_ind = np.nanargmin(pred)
@@ -143,8 +154,8 @@ def feat_slope(input_lcs, t_min_lim=10, \
 		gp_mags = input_lc.gp_mags
 		slopes = []
 		for j in np.arange(nfilts):
-			new_times = np.linspace(-100,100,200)
-			x_stacked = np.asarray([new_times,[j]*200]).T
+			new_times = np.linspace(-100,100,500)
+			x_stacked = np.asarray([new_times,[j]*500]).T
 			pred,var = gp.predict(gp_mags,x_stacked)
 			max_ind = np.nanargmin(pred)
 			max_mag = pred[max_ind]
@@ -163,8 +174,8 @@ def feat_int(input_lcs, nfilts=4):
 		gp_mags = input_lc.gp_mags
 		ints = []
 		for j in np.arange(nfilts):
-			new_times = np.linspace(-100,100,200)
-			x_stacked = np.asarray([new_times,[j]*200]).T
+			new_times = np.linspace(-100,100,500)
+			x_stacked = np.asarray([new_times,[j]*500]).T
 			pred,var = gp.predict(gp_mags,x_stacked)
 			ints.append(np.trapz(pred))
 
@@ -178,26 +189,29 @@ def main():
 	parser = ArgumentParser()
 	parser.add_argument('lcfile', type=str, help='Light curve file')
 	parser.add_argument('--outdir', type=str, default='./', help='Path in which to save the LC data (single file)')
-	parser.add_argument('--plot', type=bool, default = False, help='Plot LCs')
+	parser.add_argument('--plot', type=str2bool, default = False, help='Plot LCs')
 	parser.add_argument('--model-base', type=str, dest='model_base', default = '', help='...')
-	parser.add_argument('--get-feat-from-raenn', type=bool, dest='get_feat_from_raenn', default=True, help='...')
-	parser.add_argument('--get-feat-peaks', type=bool, dest='get_feat_peaks', default=True, help='...')
-	parser.add_argument('--get-feat-rise-decline-1', type=bool, dest='get_feat_rise_decline1', default=True, help='...')
-	parser.add_argument('--get-feat-rise-decline-2', type=bool, dest='get_feat_rise_decline2', default=True, help='...')
-	parser.add_argument('--get-feat-slope', type=bool, dest='get_feat_slope', default=True, help='...')
-	parser.add_argument('--get-feat-int', type=bool, dest='get_feat_int', default=True, help='...')
+	parser.add_argument('--get-feat-raenn', type=str2bool, dest='get_feat_raenn', default=True, help='...')
+	parser.add_argument('--get-feat-peaks', type=str2bool, dest='get_feat_peaks', default=True, help='...')
+	parser.add_argument('--get-feat-rise-decline-1', type=str2bool, dest='get_feat_rise_decline1', default=True, help='...')
+	parser.add_argument('--get-feat-rise-decline-2', type=str2bool, dest='get_feat_rise_decline2', default=True, help='...')
+	parser.add_argument('--get-feat-rise-decline-3', type=str2bool, dest='get_feat_rise_decline3', default=True, help='...')
+	parser.add_argument('--get-feat-slope', type=str2bool, dest='get_feat_slope', default=True, help='...')
+	parser.add_argument('--get-feat-int', type=str2bool, dest='get_feat_int', default=True, help='...')
 	parser.add_argument('--prep-file', type=str, dest='prep_file', default='', help='...')
+	parser.add_argument('--outfile', type=str, dest='outfile', default='', help='...')
 
 
 	args = parser.parse_args()
 	features = []
 
 	input_lcs = np.load(args.lcfile, allow_pickle=True)['lcs']
+	input_lcs = input_lcs[0:4]
 	ids = []
 	feat_names = []
 	for input_lc in input_lcs:
 		ids.append(input_lc.name)
-	if args.get_feat_from_raenn:
+	if args.get_feat_raenn:
 		feat = feat_from_raenn(args.lcfile,model_base = args.model_base, prep_file=args.prep_file)
 		if features != []:
 			features = np.hstack((features,feat))
@@ -243,6 +257,19 @@ def main():
 			feat_names.append('decline2'+str(i))
 		print('dur2 feat done')
 
+	if args.get_feat_rise_decline3:
+		feat1, feat2 = feat_rise_and_decline(input_lcs,3)
+		if features != []:
+			features = np.hstack((features,feat1))
+			features = np.hstack((features,feat2))
+		else:
+			features = np.hstack((feat1,feat2))
+		for i in np.arange(np.shape(feat)[-1]):
+			feat_names.append('rise3'+str(i))
+		for i in np.arange(np.shape(feat)[-1]):
+			feat_names.append('decline3'+str(i))
+		print('dur3 feat done')
+
 	if args.get_feat_slope:
 		feat = feat_slope(input_lcs)
 		if features != []:
@@ -263,9 +290,7 @@ def main():
 			feat_names.append('int'+str(i))
 		print('int feat done')
 
-	print(np.shape(features))
-	print(features)
-	save_features(features, ids,feat_names, './features_'+date+'.npz')
+	save_features(features, ids,feat_names, './'+args.outfile+date+'.npz')
 	
 
 if __name__ == '__main__':
