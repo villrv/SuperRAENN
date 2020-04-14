@@ -206,7 +206,6 @@ def main():
 	features = []
 
 	input_lcs = np.load(args.lcfile, allow_pickle=True)['lcs']
-	input_lcs = input_lcs[0:4]
 	ids = []
 	feat_names = []
 	for input_lc in input_lcs:
