@@ -24,12 +24,51 @@ ENCODING_N_DEFAULT = 10
 N_EPOCH_DEFAULT = 10
 
 def customLoss(yTrue,yPred):
+	"""
+	Custom loss which doesn't use the errors
+	Parameters
+	----------
+	yTrue : array
+		True flux values
+	yPred : array
+		Predicted flux values
+	"""
 	return K.mean(K.square(yTrue[:,:,1:5] - yPred[:,:,:]))
 
 def prep_input(input_lc_file, new_t_max=100.0, filler_err = 1.0, 
 				save = False, load=False, outdir = None, prep_file=None):
+	"""
+	Prep input file for fitting
+	Parameters
+	----------
+	input_lc_file : str
+		True flux values
+	new_t_max : float
+		Predicted flux values
+	filler_err : float
+		Predicted flux values
+	save : bool
+		Predicted flux values
+	load : bool
+		Predicted flux values
+	outdir : str
+		Predicted flux values
+	prep_file : str
+		Predicted flux values
+	Returns
+	-------
+	sequence : numpy.ndarray
+		Array LC flux times, values and errors
+	outseq : numpy.ndarray
+		An array of LC flux values and limiting magnitudes
+	ids : numpy.ndarray
+		Array of SN names
+	sequence_len : float
+		Maximum length of LC values
+	nfilts : int
+		Number of filters in LC files
+	"""
 	lightcurves = np.load(input_lc_file,allow_pickle=True)['lcs']
-
 	lengths = []
 	ids = []
 	for lightcurve in lightcurves:
@@ -80,17 +119,31 @@ def prep_input(input_lc_file, new_t_max=100.0, filler_err = 1.0,
 		np.savez(model_prep_file, bandmin=bandmin, bandmax=bandmax)
 	return sequence, outseq, ids, sequence_len, nfilts
 
-#Scheduler
-# learning rate schedule
-def step_decay(epoch):
-	initial_lrate = 0.01
-	drop = 0.5
-	epochs_drop = 3.0
-	lrate = initial_lrate * math.pow(drop, math.floor((1+epoch)/epochs_drop))
-	return lrate
-
 def make_model(LSTMN, encodingN, maxlen, nfilts):
-	# define model
+	"""
+	Make RAENN model
+	Parameters
+	----------
+	LSTMN : int
+		Number of neurons to use in first/last layers
+	encodingN : int
+		Number of neurons to use in encoding layer
+	maxlen : int
+		Maximum LC length
+	nfilts : int
+		Number of filters in LCs
+	Returns
+	-------
+	model : keras.models.Model
+		RAENN model to be trained
+	callbacks_list : list
+		List of keras callbacks
+	input_1 : keras.layer
+		Input layer of RAENN
+	encoded : keras.layer
+		RAENN encoding layer
+	"""
+
 	input_1 = Input((None,nfilts*2+1)) #layer 0
 	input_2 = Input((maxlen,2))
 
@@ -108,7 +161,6 @@ def make_model(LSTMN, encodingN, maxlen, nfilts):
 						decay=0)
 	model.compile(optimizer=new_optimizer, loss=customLoss)
 
-	lrate = LearningRateScheduler(step_decay)
 	es = EarlyStopping(monitor='val_loss', min_delta=0, patience=50, 
 						verbose=0, mode='min', baseline=None, 
 						restore_best_weights=True)
@@ -120,6 +172,25 @@ def make_model(LSTMN, encodingN, maxlen, nfilts):
 	return model, callbacks_list, input_1, encoded
 
 def fit_model(model, callbacks_list, sequence, outseq, n_epoch):
+	"""
+	Make RAENN model
+	Parameters
+	----------
+	model : keras.models.Model
+		RAENN model to be trained
+	callbacks_list : list
+		List of keras callbacks
+	sequence : numpy.ndarray
+		Array LC flux times, values and errors
+	outseq : numpy.ndarray
+		An array of LC flux values and limiting magnitudes
+	n_epoch : int
+		Number of epochs to train for
+	Returns
+	-------
+	model : keras.models.Model
+		Trained keras model
+	"""
 	model.fit([sequence,outseq], sequence, epochs=n_epoch,  verbose=1, 
 			shuffle=False,callbacks=callbacks_list,validation_split=0.33)
 	return model

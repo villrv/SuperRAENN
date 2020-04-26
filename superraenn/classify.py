@@ -10,7 +10,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.inspection import permutation_importance
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
-
+import pickle
 
 now = datetime.datetime.now()
 date = str(now.strftime("%Y-%m-%d"))
@@ -42,6 +42,33 @@ def KDE_resample(x,y,N):
 		kde = KernelDensity(kernel='gaussian', bandwidth=0.5).fit(cx)
 		newX[i*N+len(gind[0]):(i+1)*N] = kde.sample(n_samples=N-len(gind[0]))
 	return newX,newy
+
+def prep_data_for_classifying(featurefile, whiten=True):
+	feat_data = np.load(featurefile, allow_pickle=True)
+	ids = feat_data['ids']
+	features = feat_data['features']
+	feat_names = feat_data['feat_names']
+
+	X = []
+	final_sn_names = []
+	for sn_name in ids:
+		gind = np.where(sn_name==ids)
+		if len(gind[0]) == 0:
+			continue
+		if not np.isfinite(features[gind][0]).all():
+			continue
+		if X == []:
+			X = features[gind][0]
+		else:
+			X = np.vstack((X,features[gind][0]))
+		final_sn_names.append(sn_name)
+	
+	if whiten:
+		means = np.mean(X,axis=0)
+		stds = np.std(X,axis=0)
+		X = preprocessing.scale(X)
+
+	return X,final_sn_names, means,stds, feat_names
 
 def prep_data_for_training(featurefile, metatable, whiten=True):
 	feat_data = np.load(featurefile, allow_pickle=True)
@@ -87,96 +114,124 @@ def main():
 	parser.add_argument('featurefile', type=str, help='Feature file')
 	parser.add_argument('--metatable', type=str, default='', help='Get training set labels')
 	parser.add_argument('--outdir', type=str, default='./', help='Path in which to save the LC data (single file)')
-	parser.add_argument('--train', type = bool, default = True, help = '...')
+	parser.add_argument('--train', action='store_true', help = '...')
+	parser.add_argument('--savemodel', action='store_true', help = '...')
 	parser.add_argument('--add-random', dest='add_random',type = bool, default = False, help = '...')
 	parser.add_argument('--calc-importance', dest='calc_importance',type = bool, default = False, help = '...')
 	parser.add_argument('--only-raenn', dest='only_raenn',type = bool, default = False, help = '...')
 	parser.add_argument('--not-raenn', dest='not_raenn',type = bool, default = False, help = '...')
 	parser.add_argument('--resampling', dest='resampling',type = str, default = 'KDE', help = '...')
-
+	parser.add_argument('--modelfile', dest='modelfile',type = str, default = 'model', help = '...')
 
 	args = parser.parse_args()
 
-	X,y,names, means,stds, feature_names = prep_data_for_training(args.featurefile,args.metatable)
-	names = np.asarray(names,dtype=str)
+	if args.train:
+		X,y,names, means,stds, feature_names = prep_data_for_training(args.featurefile,args.metatable)
+		names = np.asarray(names,dtype=str)
 
-	if args.only_raenn:
-		gind = [i for i,feat in enumerate(feature_names) if 'raenn' in feat] 
-		X = X[:,gind]
-		feature_names = feature_names[gind]
+		if args.only_raenn:
+			gind = [i for i,feat in enumerate(feature_names) if 'raenn' in feat] 
+			X = X[:,gind]
+			feature_names = feature_names[gind]
 
-	if args.not_raenn:
-		gind = [i for i,feat in enumerate(feature_names) if 'raenn' not in feat] 
-		X = X[:,gind]
-		feature_names = feature_names[gind]
-
-	if args.add_random:
-		feature_names = np.append(feature_names,'random')
-	#np.random.shuffle(y)
-	loo = LeaveOneOut()
-	y_pred = np.zeros(len(y))
-	for train_index, test_index in loo.split(X):
-		X_train, X_test = X[train_index], X[test_index]
-		y_train, y_test = y[train_index], y[test_index]
-
-		if y_test[0] != 0:
-			continue
-		
-		if args.resampling == 'Gauss':
-			X_res, y_res = Gauss_resample(X_train, y_train,400)
-		else:
-			X_res, y_res = KDE_resample(X_train, y_train,400)
-
-		new_ind = np.arange(len(y_res),dtype=int)
-		np.random.shuffle(new_ind)
-		X_res = X_res[new_ind]
-		y_res = y_res[new_ind]
+		if args.not_raenn:
+			gind = [i for i,feat in enumerate(feature_names) if 'raenn' not in feat] 
+			X = X[:,gind]
+			feature_names = feature_names[gind]
 
 		if args.add_random:
-			X_res2, y_res2 = Gauss_resample(X_train, y_train,400)
-			X_res2 = X_res2[:-40,:]
-			y_res2 = y_res2[:-40]
-			X_res = np.vstack((X_res.T,np.random.randn(len(X_res)))).T
-			X_res2 = np.vstack((X_res2.T,np.random.randn(len(X_res2)))).T
-			X_test = np.vstack((X_test.T,np.random.randn(len(X_test)))).T
+			feature_names = np.append(feature_names,'random')
 
-		if args.calc_importance:
-			X_res2, y_res2 = Gauss_resample(X_train, y_train,400)
-			X_res2 = X_res2[:-40,:]
-			y_res2 = y_res2[:-40]
+		if not args.savemodel:
+			loo = LeaveOneOut()
+			y_pred = np.zeros(len(y))
+			for train_index, test_index in loo.split(X):
+				X_train, X_test = X[train_index], X[test_index]
+				y_train, y_test = y[train_index], y[test_index]
 
-		clf = RandomForestClassifier(n_estimators=100, max_depth=None,
-						random_state=42, criterion='gini',class_weight='balanced',
-									 max_features=None,oob_score=False)
-		clf.fit(X_res,y_res)
-		print(clf.predict_proba(X_test),y_test,names[test_index])
+				#if y_test[0] != 0:
+				#	continue
+				
+				if args.resampling == 'Gauss':
+					X_res, y_res = Gauss_resample(X_train, y_train,400)
+				else:
+					X_res, y_res = KDE_resample(X_train, y_train,400)
 
-		if args.calc_importance:
-			result = permutation_importance(clf, X_res2, y_res2, 
-								n_repeats=10,
-                                random_state=42, n_jobs=2)
+				new_ind = np.arange(len(y_res),dtype=int)
+				np.random.shuffle(new_ind)
+				X_res = X_res[new_ind]
+				y_res = y_res[new_ind]
 
-			indices = result.importances_mean.argsort()[::-1]
-			print(result.importances_mean)
-			feature_names = np.asarray(feature_names,dtype=str)
-			importances = result.importances_mean
-			std = result.importances_std
 
-			# Print the feature ranking
-			print("Feature ranking:")
+				if args.calc_importance:
+					X_res2, y_res2 = Gauss_resample(X_train, y_train,400)
+					X_res2 = X_res2[:-40,:]
+					y_res2 = y_res2[:-40]
 
-			for f in range(X_res.shape[1]):
-			    print("%d. feature %d (%f)" % (f + 1, indices[f], importances[indices[f]]))
+				if args.add_random:
+					X_res2, y_res2 = Gauss_resample(X_train, y_train,400)
+					X_res2 = X_res2[:-40,:]
+					y_res2 = y_res2[:-40]
+					X_res = np.vstack((X_res.T,np.random.randn(len(X_res)))).T
+					X_res2 = np.vstack((X_res2.T,np.random.randn(len(X_res2)))).T
+					X_test = np.vstack((X_test.T,np.random.randn(len(X_test)))).T
 
-			plt.ylabel("Feature importances")
-			plt.bar(range(X_res.shape[1]), importances[indices],
-			       color="grey", yerr=std[indices], align="center")
-			plt.xticks(np.arange(len(importances))+0.5, feature_names[indices],
-						rotation=45,ha='right')
-			plt.show()
-		y_pred[test_index] = np.argmax(clf.predict_proba(X_test))
-	cnf_matrix = confusion_matrix(y,y_pred)
-	print(cnf_matrix)
+				clf = RandomForestClassifier(n_estimators=300, max_depth=None,
+								random_state=42, criterion='gini',class_weight='balanced',
+											 max_features=None,oob_score=False)
+				clf.fit(X_res,y_res)
+				print(clf.predict_proba(X_test),y_test,names[test_index])
+
+				if args.calc_importance:
+					result = permutation_importance(clf, X_res2, y_res2, 
+										n_repeats=30,
+		                                random_state=42, n_jobs=2)
+
+					indices = result.importances_mean.argsort()[::-1]
+					feature_names = np.asarray(feature_names,dtype=str)
+					importances = result.importances_mean
+					std = result.importances_std
+
+					print("Feature ranking:")
+
+					for f in range(X_res.shape[1]):
+					    print(feature_names[indices[f]],importances[indices[f]],std[indices[f]])
+
+					plt.ylabel("Feature importances")
+					plt.bar(range(X_res.shape[1]), importances[indices],
+					       color="grey", yerr=std[indices], align="center")
+					plt.xticks(np.arange(len(importances))+0.5, feature_names[indices],
+								rotation=45,ha='right')
+					plt.show()
+				y_pred[test_index] = np.argmax(clf.predict_proba(X_test))
+			cnf_matrix = confusion_matrix(y,y_pred)
+			print(cnf_matrix)
+		if args.savemodel:
+			if args.resampling == 'Gauss':
+				X_res, y_res = Gauss_resample(X, y,400)
+			else:
+				X_res, y_res = KDE_resample(X, y,400)
+
+			new_ind = np.arange(len(y_res),dtype=int)
+			np.random.shuffle(new_ind)
+			X_res = X_res[new_ind]
+			y_res = y_res[new_ind]
+
+			clf = RandomForestClassifier(n_estimators=300, max_depth=None,
+							random_state=42, criterion='gini',class_weight='balanced',
+										 max_features=None,oob_score=False)
+			clf.fit(X_res,y_res)
+			# save the model to disk
+			pickle.dump(clf, open(args.modelfile+'.sav', 'wb'))
+
+	else:
+		loaded_model = pickle.load(open(args.modelfile+'.sav', 'rb'))
+
+		X, names, means,stds, feature_names = prep_data_for_classifying(args.featurefile)
+		names = np.asarray(names,dtype=str)
+
+		print(names,loaded_model.predict_proba(X))
+
 
 if __name__ == '__main__':
 	main()
