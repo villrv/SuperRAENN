@@ -17,6 +17,24 @@ date = str(now.strftime("%Y-%m-%d"))
 
 
 def Gauss_resample(x,y,N):
+	"""
+	Resample features based on Gaussian approximation
+	Note we divide the covariance by 2!
+	Parameters
+	----------
+	X : numpy.ndarray
+		Feature array
+	y : numpy.ndarray
+		Label array
+	N : int
+		Total samples to simulate (to be added to original sample)
+	Returns
+	-------
+	newX : numpy.ndarray
+		New Feature array
+	newY : numpy.ndarray
+		New label array
+	"""
 	uys = np.unique(y)
 	newX = np.zeros((int(N*len(uys)),np.size(x,axis=1)))
 	newy = np.zeros((int(N*len(uys)),))
@@ -27,10 +45,27 @@ def Gauss_resample(x,y,N):
 		cx = x[gind[0],:]
 		mean = np.mean(cx, axis=0)
 		cov = np.cov(cx, rowvar=False)
-		newX[i*N+len(gind[0]):(i+1)*N] = np.random.multivariate_normal(mean, cov/2.0, size=N-len(gind[0]))
+		newX[i*N+len(gind[0]):(i+1)*N] = np.random.multivariate_normal(mean, cov/2., size=N-len(gind[0]))
 	return newX,newy
 
-def KDE_resample(x,y,N):
+def KDE_resample(x,y,N,bandwidth=0.5):
+	"""
+	Resample features based on Kernel Density approximation
+	Parameters
+	----------
+	X : numpy.ndarray
+		Feature array
+	y : numpy.ndarray
+		Label array
+	N : int
+		Total samples to simulate (to be added to original sample)
+	Returns
+	-------
+	newX : numpy.ndarray
+		New Feature array
+	newY : numpy.ndarray
+		New label array
+	"""
 	uys = np.unique(y)
 	newX = np.zeros((int(N*len(uys)),np.size(x,axis=1)))
 	newy = np.zeros((int(N*len(uys)),))
@@ -39,11 +74,38 @@ def KDE_resample(x,y,N):
 		newX[i*N:i*N+len(gind[0]),:] = x[gind[0],:]
 		newy[i*N:(i+1)*N] = uy
 		cx = x[gind[0],:]
-		kde = KernelDensity(kernel='gaussian', bandwidth=0.5).fit(cx)
+		kde = KernelDensity(kernel='gaussian', bandwidth=bandwidth).fit(cx)
 		newX[i*N+len(gind[0]):(i+1)*N] = kde.sample(n_samples=N-len(gind[0]))
 	return newX,newy
 
-def prep_data_for_classifying(featurefile, whiten=True):
+def prep_data_for_classifying(featurefile, means,stds, whiten=True, verbose=False):
+	"""
+	Resample features based on Kernel Density approximation
+	Parameters
+	----------
+	featurefile : str
+		File with pre-processed features
+	means : numpy.ndarray
+		Means of features, used to whiten 
+	stds : numpy.ndarray
+		St. dev of features, used to whiten
+	whiten : bool
+		Whiten features before classification
+	verbose : bool
+		Print if SNe fail
+	Returns
+	-------
+	X : numpy.ndarray
+		Feature array
+	final_sn_names : numpy.ndarray
+		Label array
+	means : numpy.ndarray
+		Means of features, used to whiten 
+	stds : numpy.ndarray
+		St. dev of features, used to whiten
+	feat_names : numpy.ndarray
+		Array of feature names
+	"""
 	feat_data = np.load(featurefile, allow_pickle=True)
 	ids = feat_data['ids']
 	features = feat_data['features']
@@ -53,24 +115,55 @@ def prep_data_for_classifying(featurefile, whiten=True):
 	final_sn_names = []
 	for sn_name in ids:
 		gind = np.where(sn_name==ids)
-		if len(gind[0]) == 0:
-			continue
-		if not np.isfinite(features[gind][0]).all():
-			continue
+		if verbose:
+			if len(gind[0]) == 0:
+				print('SN not found')
+				sys.exit()
+			if not np.isfinite(features[gind][0]).all():
+				print('Warning: ',sn_name,' has a non-finite feature')
 		if X == []:
 			X = features[gind][0]
 		else:
 			X = np.vstack((X,features[gind][0]))
 		final_sn_names.append(sn_name)
+
+	gind = np.where(np.isnan(X))
+	if len(gind)>0:
+		X[gind[0],gind[1]] = means[gind[1]]
+
 	
 	if whiten:
-		means = np.mean(X,axis=0)
-		stds = np.std(X,axis=0)
-		X = preprocessing.scale(X)
+		X = (X - means)/stds
 
 	return X,final_sn_names, means,stds, feat_names
 
 def prep_data_for_training(featurefile, metatable, whiten=True):
+	"""
+	Resample features based on Kernel Density approximation
+	Parameters
+	----------
+	featurefile : str
+		File with pre-processed features
+	metatable : numpy.ndarray
+		Table which must include: Object Name, Redshift, Type, Estimate 
+		Peak Time, and EBV_MW
+	whiten : bool
+		Whiten features before classification
+	Returns
+	-------
+	X : numpy.ndarray
+		Feature array
+	y : numpy.ndarray
+		Label array
+	final_sn_names : numpy.ndarray
+		Label array
+	means : numpy.ndarray
+		Means of features, used to whiten 
+	stds : numpy.ndarray
+		St. dev of features, used to whiten
+	feat_names : numpy.ndarray
+		Array of feature names
+	"""
 	feat_data = np.load(featurefile, allow_pickle=True)
 	ids = feat_data['ids']
 	features = feat_data['features']
@@ -101,9 +194,9 @@ def prep_data_for_training(featurefile, metatable, whiten=True):
 			y = np.append(y,sn_num)
 		final_sn_names.append(sn_name)
 	
+	means = np.mean(X,axis=0)
+	stds = np.std(X,axis=0)
 	if whiten:
-		means = np.mean(X,axis=0)
-		stds = np.std(X,axis=0)
 		X = preprocessing.scale(X)
 
 	return X,y,final_sn_names, means,stds, feat_names
@@ -114,21 +207,22 @@ def main():
 	parser.add_argument('featurefile', type=str, help='Feature file')
 	parser.add_argument('--metatable', type=str, default='', help='Get training set labels')
 	parser.add_argument('--outdir', type=str, default='./', help='Path in which to save the LC data (single file)')
-	parser.add_argument('--train', action='store_true', help = '...')
-	parser.add_argument('--savemodel', action='store_true', help = '...')
-	parser.add_argument('--add-random', dest='add_random',type = bool, default = False, help = '...')
-	parser.add_argument('--calc-importance', dest='calc_importance',type = bool, default = False, help = '...')
-	parser.add_argument('--only-raenn', dest='only_raenn',type = bool, default = False, help = '...')
-	parser.add_argument('--not-raenn', dest='not_raenn',type = bool, default = False, help = '...')
-	parser.add_argument('--resampling', dest='resampling',type = str, default = 'KDE', help = '...')
-	parser.add_argument('--modelfile', dest='modelfile',type = str, default = 'model', help = '...')
+	parser.add_argument('--train', action='store_true', help = 'Train classification model')
+	parser.add_argument('--savemodel', action='store_true', help = 'Save output model, training on full set')
+	parser.add_argument('--add-random', dest='add_random',type = bool, default = False, help = 'Add random number as feature (for testing)')
+	parser.add_argument('--calc-importance', dest='calc_importance',type = bool, default = False, help = 'Calculate feature importance')
+	parser.add_argument('--only-raenn', dest='only_raenn',type = bool, default = False, help = 'Use ony RAENN features')
+	parser.add_argument('--not-raenn', dest='not_raenn',type = bool, default = False, help = 'Exclude RAENN features')
+	parser.add_argument('--no-int', dest='no_int',type = bool, default = False, help = 'Exclude integral features (for testing)')
+	parser.add_argument('--resampling', dest='resampling',type = str, default = 'KDE', help = 'Resampling methods. Either KDE or Gauss available')
+	parser.add_argument('--modelfile', dest='modelfile',type = str, default = 'model', help = 'Name of model file to save')
+	parser.add_argument('--randomseed', type = int, default = 42, help = 'Name of model file to save')
 
 	args = parser.parse_args()
 
 	if args.train:
 		X,y,names, means,stds, feature_names = prep_data_for_training(args.featurefile,args.metatable)
 		names = np.asarray(names,dtype=str)
-
 		if args.only_raenn:
 			gind = [i for i,feat in enumerate(feature_names) if 'raenn' in feat] 
 			X = X[:,gind]
@@ -139,6 +233,11 @@ def main():
 			X = X[:,gind]
 			feature_names = feature_names[gind]
 
+		if args.no_int:
+			gind = [i for i,feat in enumerate(feature_names) if 'int' not in feat] 
+			X = X[:,gind]
+			feature_names = feature_names[gind]
+
 		if args.add_random:
 			feature_names = np.append(feature_names,'random')
 
@@ -146,11 +245,12 @@ def main():
 			loo = LeaveOneOut()
 			y_pred = np.zeros(len(y))
 			for train_index, test_index in loo.split(X):
+
 				X_train, X_test = X[train_index], X[test_index]
 				y_train, y_test = y[train_index], y[test_index]
 
-				#if y_test[0] != 0:
-				#	continue
+				if y_test[0] != 4:
+					continue
 				
 				if args.resampling == 'Gauss':
 					X_res, y_res = Gauss_resample(X_train, y_train,400)
@@ -176,30 +276,25 @@ def main():
 					X_res2 = np.vstack((X_res2.T,np.random.randn(len(X_res2)))).T
 					X_test = np.vstack((X_test.T,np.random.randn(len(X_test)))).T
 
-				clf = RandomForestClassifier(n_estimators=300, max_depth=None,
-								random_state=42, criterion='gini',class_weight='balanced',
+				clf = RandomForestClassifier(n_estimators=400, max_depth=None,
+								random_state=args.randomseed, criterion='gini',class_weight='balanced',
 											 max_features=None,oob_score=False)
 				clf.fit(X_res,y_res)
 				print(clf.predict_proba(X_test),y_test,names[test_index])
 
 				if args.calc_importance:
-					result = permutation_importance(clf, X_res2, y_res2, 
-										n_repeats=30,
-		                                random_state=42, n_jobs=2)
-
-					indices = result.importances_mean.argsort()[::-1]
 					feature_names = np.asarray(feature_names,dtype=str)
-					importances = result.importances_mean
-					std = result.importances_std
+					importances = clf.feature_importances_
+					indices = importances.argsort()[::-1]
 
 					print("Feature ranking:")
 
 					for f in range(X_res.shape[1]):
-					    print(feature_names[indices[f]],importances[indices[f]],std[indices[f]])
+					    print(feature_names[indices[f]],importances[indices[f]])
 
 					plt.ylabel("Feature importances")
 					plt.bar(range(X_res.shape[1]), importances[indices],
-					       color="grey", yerr=std[indices], align="center")
+					       color="grey", align="center")
 					plt.xticks(np.arange(len(importances))+0.5, feature_names[indices],
 								rotation=45,ha='right')
 					plt.show()
@@ -218,19 +313,22 @@ def main():
 			y_res = y_res[new_ind]
 
 			clf = RandomForestClassifier(n_estimators=300, max_depth=None,
-							random_state=42, criterion='gini',class_weight='balanced',
+							random_state=args.randomseed, criterion='gini',class_weight='balanced',
 										 max_features=None,oob_score=False)
 			clf.fit(X_res,y_res)
 			# save the model to disk
-			pickle.dump(clf, open(args.modelfile+'.sav', 'wb'))
+			pickle.dump([clf,means,stds], open(args.modelfile+'.sav', 'wb'))
 
 	else:
-		loaded_model = pickle.load(open(args.modelfile+'.sav', 'rb'))
-
-		X, names, means,stds, feature_names = prep_data_for_classifying(args.featurefile)
+		info = pickle.load(open(args.modelfile+'.sav', 'rb'))
+		loaded_model = info[0]
+		means = info[1]
+		stds = info[2]
+		X, names, means,stds, feature_names = prep_data_for_classifying(args.featurefile, means,stds)
 		names = np.asarray(names,dtype=str)
-
-		print(names,loaded_model.predict_proba(X))
+		for i,name in enumerate(names):
+			print(name," ".join([str(e) for e in loaded_model.predict_proba([X[i]])[0]]))
+			
 
 
 if __name__ == '__main__':

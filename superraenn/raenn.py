@@ -117,6 +117,7 @@ def prep_input(input_lc_file, new_t_max=100.0, filler_err = 1.0,
 		model_prep_file = outdir+'prep_'+date+'.npz'
 		print(model_prep_file)
 		np.savez(model_prep_file, bandmin=bandmin, bandmax=bandmax)
+		sys.exit()
 	return sequence, outseq, ids, sequence_len, nfilts
 
 def make_model(LSTMN, encodingN, maxlen, nfilts):
@@ -218,28 +219,30 @@ def get_decoder(model,encodingN):
 	return decoder
 
 def get_decodings(decoder,encoder,sequence,lms, encodingN, sequence_len,plot=True):
-	seq = np.reshape(sequence[0,:,:],(1,sequence_len,9))
-	encoding1 = encoder.predict(seq)[-1]
-	encoding1 = np.vstack([encoding1]).reshape((1,1,encodingN))
-	repeater1 = np.repeat(encoding1,sequence_len,axis=1)
-	out_seq = np.reshape(seq[:,:,0],(len(seq),sequence_len,1))
-	lms_test = np.reshape(np.repeat(lms[0],sequence_len),(len(seq),-1))
-	out_seq = np.dstack((out_seq,lms_test))
-
-	decoding_input2 = np.concatenate((repeater1,out_seq),axis=-1)
-
-	decoding2 = decoder.predict(decoding_input2)[0]
 
 	if plot:
-		plt.plot(seq[0,:,0],seq[0,:,1],'green',alpha=1.0,linewidth=1)
-		plt.plot(seq[0,:,0],decoding2[:,0],'green',alpha=0.2,linewidth=10)
-		plt.plot(seq[0,:,0],seq[0,:,2],'red',alpha=1.0,linewidth=1)
-		plt.plot(seq[0,:,0],decoding2[:,1],'red',alpha=0.2,linewidth=10)
-		plt.plot(seq[0,:,0],seq[0,:,3],'orange',alpha=1.0,linewidth=1)
-		plt.plot(seq[0,:,0],decoding2[:,2],'orange',alpha=0.2,linewidth=10)
-		plt.plot(seq[0,:,0],seq[0,:,4],'purple',alpha=1.0,linewidth=1)
-		plt.plot(seq[0,:,0],decoding2[:,3],'purple',alpha=0.2,linewidth=10)
-		plt.show()
+		for i in np.arange(len(sequence)):
+			seq = np.reshape(sequence[i,:,:],(1,sequence_len,9))
+			encoding1 = encoder.predict(seq)[-1]
+			encoding1 = np.vstack([encoding1]).reshape((1,1,encodingN))
+			repeater1 = np.repeat(encoding1,sequence_len,axis=1)
+			out_seq = np.reshape(seq[:,:,0],(len(seq),sequence_len,1))
+			lms_test = np.reshape(np.repeat(lms[i],sequence_len),(len(seq),-1))
+			out_seq = np.dstack((out_seq,lms_test))
+
+			decoding_input2 = np.concatenate((repeater1,out_seq),axis=-1)
+
+			decoding2 = decoder.predict(decoding_input2)[0]
+
+			plt.plot(seq[0,:,0],seq[0,:,1],'green',alpha=1.0,linewidth=1)
+			plt.plot(seq[0,:,0],decoding2[:,0],'green',alpha=0.2,linewidth=10)
+			plt.plot(seq[0,:,0],seq[0,:,2],'red',alpha=1.0,linewidth=1)
+			plt.plot(seq[0,:,0],decoding2[:,1],'red',alpha=0.2,linewidth=10)
+			plt.plot(seq[0,:,0],seq[0,:,3],'orange',alpha=1.0,linewidth=1)
+			plt.plot(seq[0,:,0],decoding2[:,2],'orange',alpha=0.2,linewidth=10)
+			plt.plot(seq[0,:,0],seq[0,:,4],'purple',alpha=1.0,linewidth=1)
+			plt.plot(seq[0,:,0],decoding2[:,3],'purple',alpha=0.2,linewidth=10)
+			plt.show()
 
 def save_model(model, encodingN, LSTMN, model_dir = './models/'):
 	#make output dir

@@ -60,34 +60,63 @@ def read_in_LC_files(input_files,obj_names, style='SNANA'):
 
 
 def feat_from_raenn(data_file, model_base = None, \
-					prep_file = None, generate = True):
-	if generate:
-		sequence, outseq, ids, maxlen, nfilts = prep_input(data_file,load=True, prep_file=prep_file)
-		model_file = model_base + '.json'
-		model_weight_file = model_base+'.h5'
-		with open(model_file, 'r') as f:
-			model = model_from_json(f.read())
-		model.load_weights(model_weight_file)
+					prep_file = None, plot = False):
+	"""
+	Calculate RAENN features
+	Parameters
+	----------
+	data_file : str
+		Name of data file with light curves
+	model_base : str
+		Name of RAENN model file
+	prep_file : str
+		Name of file which encodes the feature prep
 
-		encodingN = model.layers[2].output_shape[1]
-		encoded_input = Input(shape=(None,(encodingN+2)))
-		original_input = Input(shape=(None,nfilts*2+1))
-		decoder_layer2 = model.layers[-2]
-		decoder_layer3 = model.layers[-1]
-		merged = model.layers[-3]
-		repeater = model.layers[-4]
-		encoded = model.layers[2]
-		encoded1 = model.layers[1]
+	Returns
+	-------
+	encodings : numpy.ndarray
+		Array of object IDs (strings)
+	TODO
+	------
+	- prep file seems unnecessary
+	"""
+	sequence, outseq, ids, maxlen, nfilts = prep_input(data_file,load=True, prep_file=prep_file)
+	model_file = model_base + '.json'
+	model_weight_file = model_base+'.h5'
+	with open(model_file, 'r') as f:
+		model = model_from_json(f.read())
+	model.load_weights(model_weight_file)
 
-		#test_model(sequence_test,model,lm, maxlen, plot=True)
-		encoder = Model(input=original_input, output=encoded(encoded1(original_input)))
-		encodings = np.zeros((len(ids),encodingN))
-		for i in np.arange(len(ids)):
-			inseq = np.reshape(sequence[i,:,:],(1,maxlen,nfilts*2+1))
-			my_encoding = encoder.predict(inseq)
-			encodings[i,:] = my_encoding
-			encoder.reset_states() 
-		return encodings
+	encodingN = model.layers[2].output_shape[1]
+	encoded_input = Input(shape=(None,(encodingN+2)))
+	original_input = Input(shape=(None,nfilts*2+1))
+	decoder_layer2 = model.layers[-2]
+	decoder_layer3 = model.layers[-1]
+	merged = model.layers[-3]
+	repeater = model.layers[-4]
+	encoded = model.layers[2]
+	encoded1 = model.layers[1]
+
+	encoder = Model(input=original_input, output=encoded(encoded1(original_input)))
+
+
+	if plot:
+		decoder = get_decoder(model,encodingN)
+		lms = outseq[:,0,1]
+		sequence_len = maxlen
+		print(lms)
+
+		get_decodings(decoder,encoder,sequence,lms, encodingN, sequence_len)
+
+
+
+	encodings = np.zeros((len(ids),encodingN))
+	for i in np.arange(len(ids)):
+		inseq = np.reshape(sequence[i,:,:],(1,maxlen,nfilts*2+1))
+		my_encoding = encoder.predict(inseq)
+		encodings[i,:] = my_encoding
+		encoder.reset_states() 
+	return encodings
 
 def feat_peaks(input_lcs):
 	"""
@@ -189,7 +218,7 @@ def main():
 	parser = ArgumentParser()
 	parser.add_argument('lcfile', type=str, help='Light curve file')
 	parser.add_argument('--outdir', type=str, default='./', help='Path in which to save the LC data (single file)')
-	parser.add_argument('--plot', type=str2bool, default = False, help='Plot LCs')
+	parser.add_argument('--plot', type=str2bool, default = False, help='Plot LCs, for testing')
 	parser.add_argument('--model-base', type=str, dest='model_base', default = '', help='...')
 	parser.add_argument('--get-feat-raenn', type=str2bool, dest='get_feat_raenn', default=True, help='...')
 	parser.add_argument('--get-feat-peaks', type=str2bool, dest='get_feat_peaks', default=True, help='...')
@@ -211,7 +240,8 @@ def main():
 	for input_lc in input_lcs:
 		ids.append(input_lc.name)
 	if args.get_feat_raenn:
-		feat = feat_from_raenn(args.lcfile,model_base = args.model_base, prep_file=args.prep_file)
+		feat = feat_from_raenn(args.lcfile,model_base = args.model_base, 
+					prep_file=args.prep_file, plot=args.plot)
 		if features != []:
 			features = np.hstack((features,feat))
 		else:
