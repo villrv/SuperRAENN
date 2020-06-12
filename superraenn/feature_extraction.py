@@ -11,6 +11,10 @@ date = str(now.strftime("%Y-%m-%d"))
 
 
 def str2bool(v):
+    """
+    Helper function to turn strings to bool
+
+    """
     if isinstance(v, bool):
         return v
     if v.lower() in ('yes', 'true', 't', 'y', '1', 'True'):
@@ -46,8 +50,8 @@ def read_in_LC_files(input_files, obj_names, style='SNANA'):
     if style == 'SNANA':
         for i, input_file in enumerate(input_files):
             t, f, filts, err = np.genfromtxt(input_file,
-                                    usecols=(1, 4, 2, 5), skip_header=18,
-                                    skip_footer=1, unpack=True, dtype=str)
+                                             usecols=(1, 4, 2, 5), skip_header=18,
+                                             skip_footer=1, unpack=True, dtype=str)
             t = np.asarray(t, dtype=float)
             f = np.asarray(f, dtype=float)
             err = np.asarray(err, dtype=float)
@@ -168,8 +172,8 @@ def feat_rise_and_decline(input_lcs, n_mag, nfilts=4):
         t_rises_all.append(t_rises)
     return t_rises_all, t_falls_all
 
-def feat_slope(input_lcs, t_min_lim=10, \
-                t_max_lim=30, nfilts=4):
+
+def feat_slope(input_lcs, t_min_lim=10, t_max_lim=30, nfilts=4):
     slopes_all = []
     for i, input_lc in enumerate(input_lcs):
         gp = input_lc.gp
@@ -213,13 +217,19 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('lcfile', type=str, help='Light curve file')
     parser.add_argument('--outdir', type=str, default='./', help='Path in which to save the LC data (single file)')
-    parser.add_argument('--plot', type=str2bool, default = False, help='Plot LCs, for testing')
-    parser.add_argument('--model-base', type=str, dest='model_base', default = '', help='...')
+    parser.add_argument('--plot', type=str2bool, default=False, help='Plot LCs, for testing')
+    parser.add_argument('--model-base', type=str, dest='model_base', default='', help='...')
     parser.add_argument('--get-feat-raenn', type=str2bool, dest='get_feat_raenn', default=True, help='...')
     parser.add_argument('--get-feat-peaks', type=str2bool, dest='get_feat_peaks', default=True, help='...')
-    parser.add_argument('--get-feat-rise-decline-1', type=str2bool, dest='get_feat_rise_decline1', default=True, help='...')
-    parser.add_argument('--get-feat-rise-decline-2', type=str2bool, dest='get_feat_rise_decline2', default=True, help='...')
-    parser.add_argument('--get-feat-rise-decline-3', type=str2bool, dest='get_feat_rise_decline3', default=True, help='...')
+    parser.add_argument('--get-feat-rise-decline-1', type=str2bool,
+                        dest='get_feat_rise_decline1', default=True,
+                        help='...')
+    parser.add_argument('--get-feat-rise-decline-2', type=str2bool,
+                        dest='get_feat_rise_decline2', default=True,
+                        help='...')
+    parser.add_argument('--get-feat-rise-decline-3', type=str2bool,
+                        dest='get_feat_rise_decline3', default=True,
+                        help='...')
     parser.add_argument('--get-feat-slope', type=str2bool, dest='get_feat_slope', default=True, help='...')
     parser.add_argument('--get-feat-int', type=str2bool, dest='get_feat_int', default=True, help='...')
     parser.add_argument('--prep-file', type=str, dest='prep_file', default='', help='...')
@@ -234,8 +244,8 @@ def main():
     for input_lc in input_lcs:
         ids.append(input_lc.name)
     if args.get_feat_raenn:
-        feat = feat_from_raenn(args.lcfile, model_base = args.model_base, 
-                    prep_file=args.prep_file, plot=args.plot)
+        feat = feat_from_raenn(args.lcfile, model_base=args.model_base,
+                               prep_file=args.prep_file, plot=args.plot)
         if features != []:
             features = np.hstack((features, feat))
         else:
@@ -314,7 +324,7 @@ def main():
         print('int feat done')
 
     save_features(features, ids, feat_names, './'+args.outfile+date+'.npz')
-    
+
 
 if __name__ == '__main__':
     main()
