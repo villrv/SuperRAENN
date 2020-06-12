@@ -1,7 +1,7 @@
 import numpy as np
 from .lc import LightCurve
 from .raenn import prep_input, get_decoder, get_decodings
-from argparse import ArgumentParser
+import argparse
 from keras.models import model_from_json, Model
 from keras.layers import Input
 import datetime
@@ -18,7 +18,7 @@ def str2bool(v):
     elif v.lower() in ('no', 'false', 'f', 'n', '0', 'False'):
         return False
     else:
-        raise ArgumentTypeError('Boolean value expected.')
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
 def read_in_LC_files(input_files, obj_names, style='SNANA'):
@@ -45,10 +45,10 @@ def read_in_LC_files(input_files, obj_names, style='SNANA'):
     LC_list = []
     if style == 'SNANA':
         for i, input_file in enumerate(input_files):
-            t, f, filts, err = np.genfromtxt(input_file, 
-                                usecols=(1, 4, 2, 5), skip_header=18,
-                                skip_footer=1, unpack=True, dtype=str)
-            t = np.asarray(t, dtype=float)          
+            t, f, filts, err = np.genfromtxt(input_file,
+                                    usecols=(1, 4, 2, 5), skip_header=18,
+                                    skip_footer=1, unpack=True, dtype=str)
+            t = np.asarray(t, dtype=float)
             f = np.asarray(f, dtype=float)
             err = np.asarray(err, dtype=float)
 
@@ -58,6 +58,7 @@ def read_in_LC_files(input_files, obj_names, style='SNANA'):
     else:
         raise ValueError('Sorry, you need to specify a data style.')
     return LC_list
+
 
 def feat_from_raenn(data_file, model_base=None,
                     prep_file=None, plot=False):
@@ -105,8 +106,9 @@ def feat_from_raenn(data_file, model_base=None,
         inseq = np.reshape(sequence[i, :, :], (1, maxlen, nfilts*2+1))
         my_encoding = encoder.predict(inseq)
         encodings[i, :] = my_encoding
-        encoder.reset_states() 
+        encoder.reset_states()
     return encodings
+
 
 def feat_peaks(input_lcs):
     """
@@ -130,6 +132,7 @@ def feat_peaks(input_lcs):
         peaks.append(np.nanmin(input_lc.dense_lc[:, :, 0], axis=0))
     return peaks
 
+
 def feat_rise_and_decline(input_lcs, n_mag, nfilts=4):
 
     t_falls_all = []
@@ -142,14 +145,14 @@ def feat_rise_and_decline(input_lcs, n_mag, nfilts=4):
         t_rises = []
         for j in np.arange(nfilts):
             new_times = np.linspace(-100, 100, 500)
-            x_stacked = np.asarray([new_times, [j]*500]).T
+            x_stacked = np.asarray([new_times, [j] * 500]).T
             pred, var = gp.predict(gp_mags, x_stacked)
 
             max_ind = np.nanargmin(pred)
             max_mag = pred[max_ind]
             max_t = new_times[max_ind]
-            trise = np.where((new_times<max_t) & (pred>(max_mag+n_mag)))
-            tfall = np.where((new_times>max_t) & (pred>(max_mag+n_mag)))
+            trise = np.where((new_times < max_t) & (pred > (max_mag + n_mag)))
+            tfall = np.where((new_times > max_t) & (pred > (max_mag + n_mag)))
             if len(trise[0]) == 0:
                 trise = np.max(new_times) - max_t
             else:
@@ -174,16 +177,17 @@ def feat_slope(input_lcs, t_min_lim=10, \
         slopes = []
         for j in np.arange(nfilts):
             new_times = np.linspace(-100, 100, 500)
-            x_stacked = np.asarray([new_times, [j]*500]).T
+            x_stacked = np.asarray([new_times, [j] * 500]).T
             pred, var = gp.predict(gp_mags, x_stacked)
             max_ind = np.nanargmin(pred)
             max_t = new_times[max_ind]
             new_times = new_times - max_t
             lc_grad = np.gradient(pred, new_times)
-            gindmean = np.where((new_times>t_min_lim) & (new_times<t_max_lim))
+            gindmean = np.where((new_times > t_min_lim) & (new_times < t_max_lim))
             slopes.append(np.nanmedian(lc_grad[gindmean]))
         slopes_all.append(slopes)
     return slopes_all
+
 
 def feat_int(input_lcs, nfilts=4):
     ints_all = []
@@ -193,18 +197,20 @@ def feat_int(input_lcs, nfilts=4):
         ints = []
         for j in np.arange(nfilts):
             new_times = np.linspace(-100, 100, 500)
-            x_stacked = np.asarray([new_times, [j]*500]).T
+            x_stacked = np.asarray([new_times, [j] * 500]).T
             pred, var = gp.predict(gp_mags, x_stacked)
             ints.append(np.trapz(pred))
 
         ints_all.append(ints)
     return ints_all
 
+
 def save_features(features, ids, feat_names, outputfile):
     np.savez(outputfile, features=features, ids=ids, feat_names=feat_names)
 
+
 def main():
-    parser = ArgumentParser()
+    parser = argparse.ArgumentParser()
     parser.add_argument('lcfile', type=str, help='Light curve file')
     parser.add_argument('--outdir', type=str, default='./', help='Path in which to save the LC data (single file)')
     parser.add_argument('--plot', type=str2bool, default = False, help='Plot LCs, for testing')
@@ -218,7 +224,6 @@ def main():
     parser.add_argument('--get-feat-int', type=str2bool, dest='get_feat_int', default=True, help='...')
     parser.add_argument('--prep-file', type=str, dest='prep_file', default='', help='...')
     parser.add_argument('--outfile', type=str, dest='outfile', default='', help='...')
-
 
     args = parser.parse_args()
     features = []
