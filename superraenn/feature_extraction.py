@@ -12,13 +12,14 @@ date = str(now.strftime("%Y-%m-%d"))
 
 def str2bool(v):
     if isinstance(v, bool):
-       return v
+        return v
     if v.lower() in ('yes', 'true', 't', 'y', '1', 'True'):
         return True
     elif v.lower() in ('no', 'false', 'f', 'n', '0', 'False'):
         return False
     else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
+        raise ArgumentTypeError('Boolean value expected.')
+
 
 def read_in_LC_files(input_files, obj_names, style='SNANA'):
     """
@@ -44,9 +45,9 @@ def read_in_LC_files(input_files, obj_names, style='SNANA'):
     LC_list = []
     if style == 'SNANA':
         for i, input_file in enumerate(input_files):
-            t, f, filts, err = np.genfromtxt(input_file, \
-                            usecols=(1, 4, 2, 5), skip_header=18, 
-                            skip_footer=1, unpack=True, dtype=str)
+            t, f, filts, err = np.genfromtxt(input_file, 
+                                usecols=(1, 4, 2, 5), skip_header=18,
+                                skip_footer=1, unpack=True, dtype=str)
             t = np.asarray(t, dtype=float)          
             f = np.asarray(f, dtype=float)
             err = np.asarray(err, dtype=float)
@@ -58,9 +59,8 @@ def read_in_LC_files(input_files, obj_names, style='SNANA'):
         raise ValueError('Sorry, you need to specify a data style.')
     return LC_list
 
-
-def feat_from_raenn(data_file, model_base = None, \
-                    prep_file = None, plot = False):
+def feat_from_raenn(data_file, model_base=None,
+                    prep_file=None, plot=False):
     """
     Calculate RAENN features
     Parameters
@@ -88,27 +88,17 @@ def feat_from_raenn(data_file, model_base = None, \
     model.load_weights(model_weight_file)
 
     encodingN = model.layers[2].output_shape[1]
-    encoded_input = Input(shape=(None, (encodingN+2)))
     original_input = Input(shape=(None, nfilts*2+1))
-    decoder_layer2 = model.layers[-2]
-    decoder_layer3 = model.layers[-1]
-    merged = model.layers[-3]
-    repeater = model.layers[-4]
     encoded = model.layers[2]
     encoded1 = model.layers[1]
-
     encoder = Model(input=original_input, output=encoded(encoded1(original_input)))
-
 
     if plot:
         decoder = get_decoder(model, encodingN)
         lms = outseq[:, 0, 1]
         sequence_len = maxlen
         print(lms)
-
         get_decodings(decoder, encoder, sequence, lms, encodingN, sequence_len)
-
-
 
     encodings = np.zeros((len(ids), encodingN))
     for i in np.arange(len(ids)):
@@ -187,7 +177,6 @@ def feat_slope(input_lcs, t_min_lim=10, \
             x_stacked = np.asarray([new_times, [j]*500]).T
             pred, var = gp.predict(gp_mags, x_stacked)
             max_ind = np.nanargmin(pred)
-            max_mag = pred[max_ind]
             max_t = new_times[max_ind]
             new_times = new_times - max_t
             lc_grad = np.gradient(pred, new_times)
