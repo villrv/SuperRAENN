@@ -27,4 +27,4 @@ script:
   - make -C docs html  # Build the documentation.
   - set -e
   - pip install doctr
-  - doctr deploy --built-docs docs/build/html .
+  - doctr deploy --built-docs docs/_build/html .
