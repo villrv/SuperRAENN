@@ -1,3 +1,4 @@
 superraenn
 IPython
 numpydoc
+matplotlib
