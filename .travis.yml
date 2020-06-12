@@ -6,6 +6,13 @@ cache:
     - $HOME/.cache/pip
     - $HOME/.ccache  # https://github.com/travis-ci/travis-ci/issues/5853
 
+env:
+  global:
+    # Doctr deploy key for villrv/SuperRAENN
+    - secure: "crQawxyhGudZ/JItXTqhB7u9pMYHcaWIeaRvgy9rODtozyRCg9mP0Ale/t1ycP3/fNSvFpfhAlqPCSpaJL9Ukl79oBkGiJPZlBzhnf7Wp9xfuRtor0G/XOn6sUBbo6a7ddojprVQGiOgigojfBZT6rM/2hRsHHsEL2O9WzzmXxjZ6lq/0JFX6I+tdWWPE0QdYLzfjQTMtJ1rko2uq/KGA2Jw21R+l2cMz0SYZFerkTZOkJ9/GNhePjz+UCNSE3ax4xkMm7xNhgZBp6oVaS07d9muU3kQ53vynlkg7E6NNajKiXCNO25sTuDEc568hxZDPRdeN/DF7HWknLI+C43987k+Uuid72nEVX0n29ywMQPmpjTuhOSMIQWtLQnrt9vT8rbRiLfdZYykjAk+YpJ617yhsVaoO4E2m/+Hrb4Tids1J01+CXCBPAO4PsRNTAYZNOWvQnLs5Vz/aJrRDCGgSHz1gdaYAkiAN6a5MOx01ro/f27lw6Jbzbu2IlYrPYzccc8YZ0vN49eNR+27azfaU3Lbmf90Q1rGZ12LYzISKI67qvEIMp62TU09Jz+wNYOkSOBrpiX7546hLGzmkt4QqN3IBKwz7sRgAkUoMSOPGlVql6EyN9XHKnPr/Gerp5B5SMoC5B89eSW9kaqqMu27OHi8dGDU/G21perePxAzfCQ="
+
+
+
 install:
   # Install this package and the packages listed in requirements.txt.
   - pip install .
@@ -18,3 +25,6 @@ script:
   - codecov  # Upload the report to codecov.
   - flake8  # Enforce code style ('relaxed' line length limit is set in .flake8 config file).
   - make -C docs html  # Build the documentation.
+  - set -e
+  - pip install doctr
+  - doctr deploy --built-docs docs/build/html
