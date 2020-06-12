@@ -2,3 +2,4 @@ superraenn
 IPython
 numpydoc
 matplotlib
+sphinx_copybutton
