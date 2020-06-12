@@ -1,1 +1,3 @@
 superraenn
+IPython
+numpydoc
