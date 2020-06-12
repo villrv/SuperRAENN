@@ -1,6 +1,6 @@
 import numpy as np
 from .lc import LightCurve
-from .raenn import prep_input, get_encoder, get_decoder, get_decodings
+from .raenn import prep_input, get_decoder, get_decodings
 from argparse import ArgumentParser
 from keras.models import model_from_json, Model
 from keras.layers import Input
@@ -11,16 +11,16 @@ date = str(now.strftime("%Y-%m-%d"))
 
 
 def str2bool(v):
-    if isinstance(v, bool):
-       return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1', 'True'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0', 'False'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
+	if isinstance(v, bool):
+	   return v
+	if v.lower() in ('yes', 'true', 't', 'y', '1', 'True'):
+		return True
+	elif v.lower() in ('no', 'false', 'f', 'n', '0', 'False'):
+		return False
+	else:
+		raise argparse.ArgumentTypeError('Boolean value expected.')
 
-def read_in_LC_files(input_files,obj_names, style='SNANA'):
+def read_in_LC_files(input_files, obj_names, style='SNANA'):
 	"""
 	Read in LC files and convert to LC object
 
@@ -43,16 +43,16 @@ def read_in_LC_files(input_files,obj_names, style='SNANA'):
 	"""
 	LC_list = []
 	if style == 'SNANA':
-		for i,input_file in enumerate(input_files):
-			t,f,filts,err = np.genfromtxt(input_file,\
-							usecols=(1,4,2,5),skip_header=18,
-							skip_footer=1,unpack=True,dtype=str)
-			t = np.asarray(t,dtype=float)			
-			f = np.asarray(f,dtype=float)
-			err = np.asarray(err,dtype=float)
+		for i, input_file in enumerate(input_files):
+			t, f, filts, err = np.genfromtxt(input_file, \
+							usecols=(1, 4, 2, 5), skip_header=18, 
+							skip_footer=1, unpack=True, dtype=str)
+			t = np.asarray(t, dtype=float)			
+			f = np.asarray(f, dtype=float)
+			err = np.asarray(err, dtype=float)
 
 			sn_name = obj_names[i]
-			new_LC = LightCurve(sn_name,t,f,err,filts)
+			new_LC = LightCurve(sn_name, t, f, err, filts)
 			LC_list.append(new_LC)
 	else:
 		raise ValueError('Sorry, you need to specify a data style.')
@@ -80,7 +80,7 @@ def feat_from_raenn(data_file, model_base = None, \
 	------
 	- prep file seems unnecessary
 	"""
-	sequence, outseq, ids, maxlen, nfilts = prep_input(data_file,load=True, prep_file=prep_file)
+	sequence, outseq, ids, maxlen, nfilts = prep_input(data_file, load=True, prep_file=prep_file)
 	model_file = model_base + '.json'
 	model_weight_file = model_base+'.h5'
 	with open(model_file, 'r') as f:
@@ -88,8 +88,8 @@ def feat_from_raenn(data_file, model_base = None, \
 	model.load_weights(model_weight_file)
 
 	encodingN = model.layers[2].output_shape[1]
-	encoded_input = Input(shape=(None,(encodingN+2)))
-	original_input = Input(shape=(None,nfilts*2+1))
+	encoded_input = Input(shape=(None, (encodingN+2)))
+	original_input = Input(shape=(None, nfilts*2+1))
 	decoder_layer2 = model.layers[-2]
 	decoder_layer3 = model.layers[-1]
 	merged = model.layers[-3]
@@ -101,20 +101,20 @@ def feat_from_raenn(data_file, model_base = None, \
 
 
 	if plot:
-		decoder = get_decoder(model,encodingN)
-		lms = outseq[:,0,1]
+		decoder = get_decoder(model, encodingN)
+		lms = outseq[:, 0, 1]
 		sequence_len = maxlen
 		print(lms)
 
-		get_decodings(decoder,encoder,sequence,lms, encodingN, sequence_len)
+		get_decodings(decoder, encoder, sequence, lms, encodingN, sequence_len)
 
 
 
-	encodings = np.zeros((len(ids),encodingN))
+	encodings = np.zeros((len(ids), encodingN))
 	for i in np.arange(len(ids)):
-		inseq = np.reshape(sequence[i,:,:],(1,maxlen,nfilts*2+1))
+		inseq = np.reshape(sequence[i, :, :], (1, maxlen, nfilts*2+1))
 		my_encoding = encoder.predict(inseq)
-		encodings[i,:] = my_encoding
+		encodings[i, :] = my_encoding
 		encoder.reset_states() 
 	return encodings
 
@@ -137,23 +137,23 @@ def feat_peaks(input_lcs):
 	"""
 	peaks = []
 	for input_lc in input_lcs:
-		peaks.append(np.nanmin(input_lc.dense_lc[:,:,0],axis=0))
+		peaks.append(np.nanmin(input_lc.dense_lc[:, :, 0], axis=0))
 	return peaks
 
-def feat_rise_and_decline(input_lcs, n_mag,nfilts=4):
+def feat_rise_and_decline(input_lcs, n_mag, nfilts=4):
 
 	t_falls_all = []
 	t_rises_all = []
 
-	for i,input_lc in enumerate(input_lcs):
+	for i, input_lc in enumerate(input_lcs):
 		gp = input_lc.gp
 		gp_mags = input_lc.gp_mags
 		t_falls = []
 		t_rises = []
 		for j in np.arange(nfilts):
-			new_times = np.linspace(-100,100,500)
-			x_stacked = np.asarray([new_times,[j]*500]).T
-			pred,var = gp.predict(gp_mags,x_stacked)
+			new_times = np.linspace(-100, 100, 500)
+			x_stacked = np.asarray([new_times, [j]*500]).T
+			pred, var = gp.predict(gp_mags, x_stacked)
 
 			max_ind = np.nanargmin(pred)
 			max_mag = pred[max_ind]
@@ -178,19 +178,19 @@ def feat_rise_and_decline(input_lcs, n_mag,nfilts=4):
 def feat_slope(input_lcs, t_min_lim=10, \
 				t_max_lim=30, nfilts=4):
 	slopes_all = []
-	for i,input_lc in enumerate(input_lcs):
+	for i, input_lc in enumerate(input_lcs):
 		gp = input_lc.gp
 		gp_mags = input_lc.gp_mags
 		slopes = []
 		for j in np.arange(nfilts):
-			new_times = np.linspace(-100,100,500)
-			x_stacked = np.asarray([new_times,[j]*500]).T
-			pred,var = gp.predict(gp_mags,x_stacked)
+			new_times = np.linspace(-100, 100, 500)
+			x_stacked = np.asarray([new_times, [j]*500]).T
+			pred, var = gp.predict(gp_mags, x_stacked)
 			max_ind = np.nanargmin(pred)
 			max_mag = pred[max_ind]
 			max_t = new_times[max_ind]
 			new_times = new_times - max_t
-			lc_grad = np.gradient(pred,new_times)
+			lc_grad = np.gradient(pred, new_times)
 			gindmean = np.where((new_times>t_min_lim) & (new_times<t_max_lim))
 			slopes.append(np.nanmedian(lc_grad[gindmean]))
 		slopes_all.append(slopes)
@@ -198,14 +198,14 @@ def feat_slope(input_lcs, t_min_lim=10, \
 
 def feat_int(input_lcs, nfilts=4):
 	ints_all = []
-	for i,input_lc in enumerate(input_lcs):
+	for i, input_lc in enumerate(input_lcs):
 		gp = input_lc.gp
 		gp_mags = input_lc.gp_mags
 		ints = []
 		for j in np.arange(nfilts):
-			new_times = np.linspace(-100,100,500)
-			x_stacked = np.asarray([new_times,[j]*500]).T
-			pred,var = gp.predict(gp_mags,x_stacked)
+			new_times = np.linspace(-100, 100, 500)
+			x_stacked = np.asarray([new_times, [j]*500]).T
+			pred, var = gp.predict(gp_mags, x_stacked)
 			ints.append(np.trapz(pred))
 
 		ints_all.append(ints)
@@ -240,10 +240,10 @@ def main():
 	for input_lc in input_lcs:
 		ids.append(input_lc.name)
 	if args.get_feat_raenn:
-		feat = feat_from_raenn(args.lcfile,model_base = args.model_base, 
+		feat = feat_from_raenn(args.lcfile, model_base = args.model_base, 
 					prep_file=args.prep_file, plot=args.plot)
 		if features != []:
-			features = np.hstack((features,feat))
+			features = np.hstack((features, feat))
 		else:
 			features = feat
 		for i in np.arange(np.shape(feat)[-1]):
@@ -253,7 +253,7 @@ def main():
 	if args.get_feat_peaks:
 		feat = feat_peaks(input_lcs)
 		if features != []:
-			features = np.hstack((features,feat))
+			features = np.hstack((features, feat))
 		else:
 			features = feat
 		for i in np.arange(np.shape(feat)[-1]):
@@ -261,12 +261,12 @@ def main():
 		print('peak feat done')
 
 	if args.get_feat_rise_decline1:
-		feat1, feat2 = feat_rise_and_decline(input_lcs,1)
+		feat1, feat2 = feat_rise_and_decline(input_lcs, 1)
 		if features != []:
-			features = np.hstack((features,feat1))
-			features = np.hstack((features,feat2))
+			features = np.hstack((features, feat1))
+			features = np.hstack((features, feat2))
 		else:
-			features = np.hstack((feat1,feat2))
+			features = np.hstack((feat1, feat2))
 		for i in np.arange(np.shape(feat)[-1]):
 			feat_names.append('rise1'+str(i))
 		for i in np.arange(np.shape(feat)[-1]):
@@ -274,12 +274,12 @@ def main():
 		print('dur1 feat done')
 
 	if args.get_feat_rise_decline2:
-		feat1, feat2 = feat_rise_and_decline(input_lcs,2)
+		feat1, feat2 = feat_rise_and_decline(input_lcs, 2)
 		if features != []:
-			features = np.hstack((features,feat1))
-			features = np.hstack((features,feat2))
+			features = np.hstack((features, feat1))
+			features = np.hstack((features, feat2))
 		else:
-			features = np.hstack((feat1,feat2))
+			features = np.hstack((feat1, feat2))
 		for i in np.arange(np.shape(feat)[-1]):
 			feat_names.append('rise2'+str(i))
 		for i in np.arange(np.shape(feat)[-1]):
@@ -287,12 +287,12 @@ def main():
 		print('dur2 feat done')
 
 	if args.get_feat_rise_decline3:
-		feat1, feat2 = feat_rise_and_decline(input_lcs,3)
+		feat1, feat2 = feat_rise_and_decline(input_lcs, 3)
 		if features != []:
-			features = np.hstack((features,feat1))
-			features = np.hstack((features,feat2))
+			features = np.hstack((features, feat1))
+			features = np.hstack((features, feat2))
 		else:
-			features = np.hstack((feat1,feat2))
+			features = np.hstack((feat1, feat2))
 		for i in np.arange(np.shape(feat)[-1]):
 			feat_names.append('rise3'+str(i))
 		for i in np.arange(np.shape(feat)[-1]):
@@ -302,7 +302,7 @@ def main():
 	if args.get_feat_slope:
 		feat = feat_slope(input_lcs)
 		if features != []:
-			features = np.hstack((features,feat))
+			features = np.hstack((features, feat))
 		else:
 			features = feat
 		for i in np.arange(np.shape(feat)[-1]):
@@ -312,14 +312,14 @@ def main():
 	if args.get_feat_int:
 		feat = feat_int(input_lcs)
 		if features != []:
-			features = np.hstack((features,feat))
+			features = np.hstack((features, feat))
 		else:
 			features = feat
 		for i in np.arange(np.shape(feat)[-1]):
 			feat_names.append('int'+str(i))
 		print('int feat done')
 
-	save_features(features, ids,feat_names, './'+args.outfile+date+'.npz')
+	save_features(features, ids, feat_names, './'+args.outfile+date+'.npz')
 	
 
 if __name__ == '__main__':
