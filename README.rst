@@ -12,7 +12,7 @@ superRAENN
 Python package to classify  supernovae based on optical light curves
 
 * Free software: 3-clause BSD license
-* Documentation: (COMING SOON!) https://villrv.github.io/superraenn.
+* Documentation: (COMING SOON!)[https://superraenn.readthedocs.io/en/latest/]
 
 Features
 --------
