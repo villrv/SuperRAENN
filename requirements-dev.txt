@@ -13,3 +13,4 @@ numpy==1.16.0
 scikit-learn
 sphinx-copybutton
 sphinx_rtd_theme
+extinction
