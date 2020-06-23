@@ -9,6 +9,9 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
 import pickle
 import sys
+import os
+from astropy.table import QTable
+from astropy.io import ascii
 
 now = datetime.datetime.now()
 date = str(now.strftime("%Y-%m-%d"))
@@ -17,7 +20,9 @@ date = str(now.strftime("%Y-%m-%d"))
 def Gauss_resample(x, y, N):
     """
     Resample features based on Gaussian approximation
+
     Note we divide the covariance by 2!
+
     Parameters
     ----------
     X : numpy.ndarray
@@ -26,6 +31,7 @@ def Gauss_resample(x, y, N):
         Label array
     N : int
         Total samples to simulate (to be added to original sample)
+
     Returns
     -------
     newX : numpy.ndarray
@@ -51,6 +57,7 @@ def Gauss_resample(x, y, N):
 def KDE_resample(x, y, N, bandwidth=0.5):
     """
     Resample features based on Kernel Density approximation
+
     Parameters
     ----------
     X : numpy.ndarray
@@ -59,6 +66,7 @@ def KDE_resample(x, y, N, bandwidth=0.5):
         Label array
     N : int
         Total samples to simulate (to be added to original sample)
+
     Returns
     -------
     newX : numpy.ndarray
@@ -82,6 +90,7 @@ def KDE_resample(x, y, N, bandwidth=0.5):
 def prep_data_for_classifying(featurefile, means, stds, whiten=True, verbose=False):
     """
     Resample features based on Kernel Density approximation
+
     Parameters
     ----------
     featurefile : str
@@ -94,6 +103,7 @@ def prep_data_for_classifying(featurefile, means, stds, whiten=True, verbose=Fal
         Whiten features before classification
     verbose : bool
         Print if SNe fail
+
     Returns
     -------
     X : numpy.ndarray
@@ -140,6 +150,7 @@ def prep_data_for_classifying(featurefile, means, stds, whiten=True, verbose=Fal
 def prep_data_for_training(featurefile, metatable, whiten=True):
     """
     Resample features based on Kernel Density approximation
+
     Parameters
     ----------
     featurefile : str
@@ -149,6 +160,7 @@ def prep_data_for_training(featurefile, metatable, whiten=True):
         Peak Time, and EBV_MW
     whiten : bool
         Whiten features before classification
+
     Returns
     -------
     X : numpy.ndarray
@@ -204,9 +216,9 @@ def prep_data_for_training(featurefile, metatable, whiten=True):
 
 def main():
     parser = ArgumentParser()
-    parser.add_argument('featurefile', type=str, help='Feature file')
-    parser.add_argument('--metatable', type=str, default='', help='Get training set labels')
-    parser.add_argument('--outdir', type=str, default='./', help='Path in which to save the LC data (single file)')
+    parser.add_argument('metatable', type=str, default='', help='Get training set labels')
+    parser.add_argument('--featurefile', default='./products/feat.npz', type=str, help='Feature file')
+    parser.add_argument('--outdir', type=str, default='./products/', help='Path in which to save the LC data (single file)')
     parser.add_argument('--train', action='store_true', help='Train classification model')
     parser.add_argument('--savemodel', action='store_true', help='Save output model, training on full set')
     parser.add_argument('--add-random', dest='add_random', type=bool, default=False,
@@ -222,8 +234,11 @@ def main():
     parser.add_argument('--modelfile', dest='modelfile', type=str,
                         default='model', help='Name of model file to save')
     parser.add_argument('--randomseed', type=int, default=42, help='Name of model file to save')
-
+    parser.add_argument('--outfile', dest='outfile', type=str,
+                        default='superprob', help='Name of probability table file')
     args = parser.parse_args()
+
+    sn_dict = {'SLSN': 0, 'SNII': 1, 'SNIIn': 2, 'SNIa': 3, 'SNIbc': 4}
 
     if args.train:
         X, y, names, means, stds, feature_names = prep_data_for_training(args.featurefile, args.metatable)
@@ -253,9 +268,6 @@ def main():
 
                 X_train, X_test = X[train_index], X[test_index]
                 y_train, y_test = y[train_index], y[test_index]
-
-                if y_test[0] != 4:
-                    continue
 
                 if args.resampling == 'Gauss':
                     X_res, y_res = Gauss_resample(X_train, y_train, 400)
@@ -323,19 +335,37 @@ def main():
                                          random_state=args.randomseed, criterion='gini', class_weight='balanced',
                                          max_features=None, oob_score=False)
             clf.fit(X_res, y_res)
+
             # save the model to disk
-            pickle.dump([clf, means, stds], open(args.modelfile+'.sav', 'wb'))
+            if not os.path.exists(args.outdir):
+                os.makedirs(args.outdir)
+            if args.outdir[-1] != '/':
+                args.outdir+= '/'
+            pickle.dump([clf, means, stds], open(args.outdir+args.modelfile+'_'+date+'.sav', 'wb'))
+            pickle.dump([clf, means, stds], open(args.outdir+args.modelfile+'.sav', 'wb'))
 
     else:
-        info = pickle.load(open(args.modelfile+'.sav', 'rb'))
+        info = pickle.load(open(args.modelfile, 'rb'))
         loaded_model = info[0]
         means = info[1]
         stds = info[2]
         X, names, means, stds, feature_names = prep_data_for_classifying(args.featurefile, means, stds)
         names = np.asarray(names, dtype=str)
+        probabilities = np.zeros((len(names),len(sn_dict)))
         for i, name in enumerate(names):
-            print(name, " ".join([str(e) for e in loaded_model.predict_proba([X[i]])[0]]))
+            probabilities[i] = loaded_model.predict_proba([X[i]])[0]
+            #print(name, " ".join([str(e) for e in loaded_model.predict_proba([X[i]])[0]]))
+        probability_table = QTable(np.vstack((names,probabilities.T)).T, 
+                                   names=['Event Name',*sn_dict],
+                                   meta={'name':'SuperRAENN probabilities'})
 
+        # save the model to disk
+        if not os.path.exists(args.outdir):
+            os.makedirs(args.outdir)
+        if args.outdir[-1] != '/':
+            args.outdir+= '/'
+        ascii.write(probability_table, args.outdir+args.outfile+'.tex',
+                    format='latex', overwrite=True)
 
 if __name__ == '__main__':
     main()

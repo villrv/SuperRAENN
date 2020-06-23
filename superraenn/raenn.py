@@ -16,14 +16,15 @@ import logging
 now = datetime.datetime.now()
 date = str(now.strftime("%Y-%m-%d"))
 
-NEURON_N_DEFAULT = 140
+NEURON_N_DEFAULT = 100
 ENCODING_N_DEFAULT = 10
-N_EPOCH_DEFAULT = 10
+N_EPOCH_DEFAULT = 1000
 
 
 def customLoss(yTrue, yPred):
     """
     Custom loss which doesn't use the errors
+
     Parameters
     ----------
     yTrue : array
@@ -38,6 +39,7 @@ def prep_input(input_lc_file, new_t_max=100.0, filler_err=1.0,
                save=False, load=False, outdir=None, prep_file=None):
     """
     Prep input file for fitting
+
     Parameters
     ----------
     input_lc_file : str
@@ -54,6 +56,7 @@ def prep_input(input_lc_file, new_t_max=100.0, filler_err=1.0,
         Predicted flux values
     prep_file : str
         Predicted flux values
+
     Returns
     -------
     sequence : numpy.ndarray
@@ -114,12 +117,15 @@ def prep_input(input_lc_file, new_t_max=100.0, filler_err=1.0,
     if save:
         model_prep_file = outdir+'prep_'+date+'.npz'
         np.savez(model_prep_file, bandmin=bandmin, bandmax=bandmax)
+        model_prep_file = outdir+'prep.npz'
+        np.savez(model_prep_file, bandmin=bandmin, bandmax=bandmax)
     return sequence, outseq, ids, sequence_len, nfilts
 
 
 def make_model(LSTMN, encodingN, maxlen, nfilts):
     """
     Make RAENN model
+
     Parameters
     ----------
     LSTMN : int
@@ -130,6 +136,7 @@ def make_model(LSTMN, encodingN, maxlen, nfilts):
         Maximum LC length
     nfilts : int
         Number of filters in LCs
+
     Returns
     -------
     model : keras.models.Model
@@ -171,6 +178,7 @@ def make_model(LSTMN, encodingN, maxlen, nfilts):
 def fit_model(model, callbacks_list, sequence, outseq, n_epoch):
     """
     Make RAENN model
+
     Parameters
     ----------
     model : keras.models.Model
@@ -183,6 +191,7 @@ def fit_model(model, callbacks_list, sequence, outseq, n_epoch):
         An array of LC flux values and limiting magnitudes
     n_epoch : int
         Number of epochs to train for
+
     Returns
     -------
     model : keras.models.Model
@@ -246,8 +255,9 @@ def get_decodings(decoder, encoder, sequence, lms, encodingN, sequence_len, plot
             plt.show()
 
 
-def save_model(model, encodingN, LSTMN, model_dir='./models/'):
+def save_model(model, encodingN, LSTMN, model_dir='models/', outdir = './'):
     # make output dir
+    model_dir = outdir + model_dir
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
 
@@ -255,16 +265,21 @@ def save_model(model, encodingN, LSTMN, model_dir='./models/'):
     model_json = model.to_json()
     with open(model_dir+"model_"+date+"_"+str(encodingN)+'_'+str(LSTMN)+".json", "w") as json_file:
         json_file.write(model_json)
+    with open(model_dir+"model.json", "w") as json_file:
+        json_file.write(model_json)
     # serialize weights to HDF5
     model.save_weights(model_dir+"model_"+date+"_"+str(encodingN)+'_'+str(LSTMN)+".h5")
+    model.save_weights(model_dir+"model.h5")
+
     logging.info(f'Saved model to {model_dir}')
 
 
 def save_encodings(model, encoder, sequence, ids, INPUT_FILE,
                    encodingN, LSTMN, N, sequence_len,
-                   model_dir='./encodings/'):
+                   model_dir='encodings/', outdir = './'):
 
     # Make output directory
+    model_dir = outdir + model_dir
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
 
@@ -279,13 +294,15 @@ def save_encodings(model, encoder, sequence, ids, INPUT_FILE,
 
     encoder_sne_file = model_dir+'en_'+date+'_'+str(encodingN)+'_'+str(LSTMN)+'.npz'
     np.savez(encoder_sne_file, encodings=encodings, ids=ids, INPUT_FILE=INPUT_FILE)
+    np.savez(model_dir+'en.npz', encodings=encodings, ids=ids, INPUT_FILE=INPUT_FILE)
+
     logging.info(f'Saved encodings to {model_dir}')
 
 
 def main():
     parser = ArgumentParser()
     parser.add_argument('lcfile', type=str, help='Light curve file')
-    parser.add_argument('--outdir', type=str, default='./', help='Path in which to save the LC data (single file)')
+    parser.add_argument('--outdir', type=str, default='./products/', help='Path in which to save the LC data (single file)')
     parser.add_argument('--plot', type=bool, default=False, help='Plot LCs')
     parser.add_argument('--neuronN', type=int, default=NEURON_N_DEFAULT, help='Number of neurons in hidden layers')
     parser.add_argument('--encodingN', type=int, default=ENCODING_N_DEFAULT,
@@ -319,10 +336,14 @@ def main():
     # get_decodings(decoder, encoder, sequence, lms, args.encodingN, \
     #               maxlen, plot=False)
 
-    save_model(model, args.encodingN, args.neuronN)
+
+    if args.outdir[-1] != '/':
+        args.outdir+= '/'
+    save_model(model, args.encodingN, args.neuronN, outdir=args.outdir)
 
     save_encodings(model, encoder, sequence, ids, args.lcfile,
-                   args.encodingN, args.neuronN, len(ids), maxlen)
+                   args.encodingN, args.neuronN, len(ids), maxlen,
+                   outdir=args.outdir)
 
 
 if __name__ == '__main__':

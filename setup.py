@@ -1,4 +1,4 @@
-from os import path
+import os
 from setuptools import setup, find_packages
 import sys
 import versioneer
@@ -22,12 +22,12 @@ pip install --upgrade pip
 """.format(*(sys.version_info[:2] + min_version))
     sys.exit(error)
 
-here = path.abspath(path.dirname(__file__))
+here = os.path.abspath(os.path.dirname(__file__))
 
-with open(path.join(here, 'README.rst'), encoding='utf-8') as readme_file:
+with open(os.path.join(here, 'README.rst'), encoding='utf-8') as readme_file:
     readme = readme_file.read()
 
-with open(path.join(here, 'requirements.txt')) as requirements_file:
+with open(os.path.join(here, 'requirements.txt')) as requirements_file:
     # Parse requirements.txt, ignoring any commented-out lines.
     requirements = [line for line in requirements_file.read().splitlines()
                     if not line.startswith('#')]
@@ -46,7 +46,10 @@ setup(
     packages=find_packages(exclude=['docs', 'tests']),
     entry_points={
         'console_scripts': [
-            # 'command = some.module:some_function',
+            'superraenn-prep = superraenn.preprocess:main',
+            'superraenn-raenn = superraenn.raenn:main',
+            'superraenn-extract = superraenn.feature_extraction:main',
+            'superraenn-classify = superraenn.classify:main'
         ],
     },
     include_package_data=True,

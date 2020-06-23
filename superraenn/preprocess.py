@@ -3,6 +3,7 @@ import numpy as np
 from .feature_extraction import read_in_LC_files
 import logging
 import datetime
+import os
 
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.INFO)
 
@@ -14,6 +15,7 @@ DEFAULT_LIM_MAG = 25.0
 def read_in_meta_table(metatable):
     """
     Read in the metatable file
+
     Parameters
     ----------
     metatable : str
@@ -47,6 +49,7 @@ def read_in_meta_table(metatable):
 def save_lcs(lc_list, output_dir):
     """
     Save light curves as a lightcurve object
+    
     Parameters
     ----------
     lc_list : list
@@ -60,8 +63,18 @@ def save_lcs(lc_list, output_dir):
     now = datetime.datetime.now()
     date = str(now.strftime("%Y-%m-%d"))
     file_name = 'lcs_' + date + '.npz'
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    if output_dir[-1] != '/':
+        output_dir+= '/'
+
     output_file = output_dir + file_name
     np.savez(output_file, lcs=lc_list)
+    # Also easy save to latest
+    np.savez(output_dir+'lcs.npz', lcs=lc_list)
+
     logging.info(f'Saved to {output_file}')
 
 
@@ -77,7 +90,7 @@ def main():
                         help='Metatable containing each object, redshift, peak time guess, mwebv, object type')
     parser.add_argument('--zpt', type=float, default=DEFAULT_ZPT, help='Zero point of LCs')
     parser.add_argument('--lm', type=float, default=DEFAULT_LIM_MAG, help='Survey limiting magnitude')
-    parser.add_argument('--outdir', type=str, default='./', help='Path in which to save the LC data (single file)')
+    parser.add_argument('--outdir', type=str, default='./products/', help='Path in which to save the LC data (single file)')
     args = parser.parse_args()
 
     objs, redshifts, obj_types, peaks, ebvs = read_in_meta_table(args.metatable)

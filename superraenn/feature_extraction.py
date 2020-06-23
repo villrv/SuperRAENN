@@ -5,6 +5,7 @@ import argparse
 from keras.models import model_from_json, Model
 from keras.layers import Input
 import datetime
+import os
 
 now = datetime.datetime.now()
 date = str(now.strftime("%Y-%m-%d"))
@@ -68,6 +69,7 @@ def feat_from_raenn(data_file, model_base=None,
                     prep_file=None, plot=False):
     """
     Calculate RAENN features
+
     Parameters
     ----------
     data_file : str
@@ -81,8 +83,9 @@ def feat_from_raenn(data_file, model_base=None,
     -------
     encodings : numpy.ndarray
         Array of object IDs (strings)
+
     TODO
-    ------
+    ----
     - prep file seems unnecessary
     """
     sequence, outseq, ids, maxlen, nfilts = prep_input(data_file, load=True, prep_file=prep_file)
@@ -209,16 +212,22 @@ def feat_int(input_lcs, nfilts=4):
     return ints_all
 
 
-def save_features(features, ids, feat_names, outputfile):
+def save_features(features, ids, feat_names, outputfile, outdir):
+    # make output dir
+    outputfile = outputfile+'.npz'
+    outputfile = outdir + outputfile
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+
     np.savez(outputfile, features=features, ids=ids, feat_names=feat_names)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('lcfile', type=str, help='Light curve file')
-    parser.add_argument('--outdir', type=str, default='./', help='Path in which to save the LC data (single file)')
+    parser.add_argument('--outdir', type=str, default='./products/', help='Path in which to save the LC data (single file)')
     parser.add_argument('--plot', type=str2bool, default=False, help='Plot LCs, for testing')
-    parser.add_argument('--model-base', type=str, dest='model_base', default='', help='...')
+    parser.add_argument('--model-base', type=str, dest='model_base', default='./products/models/model', help='...')
     parser.add_argument('--get-feat-raenn', type=str2bool, dest='get_feat_raenn', default=True, help='...')
     parser.add_argument('--get-feat-peaks', type=str2bool, dest='get_feat_peaks', default=True, help='...')
     parser.add_argument('--get-feat-rise-decline-1', type=str2bool,
@@ -232,8 +241,8 @@ def main():
                         help='...')
     parser.add_argument('--get-feat-slope', type=str2bool, dest='get_feat_slope', default=True, help='...')
     parser.add_argument('--get-feat-int', type=str2bool, dest='get_feat_int', default=True, help='...')
-    parser.add_argument('--prep-file', type=str, dest='prep_file', default='', help='...')
-    parser.add_argument('--outfile', type=str, dest='outfile', default='', help='...')
+    parser.add_argument('--prep-file', type=str, dest='prep_file', default='./products/prep.npz', help='...')
+    parser.add_argument('--outfile', type=str, dest='outfile', default='feat', help='...')
 
     args = parser.parse_args()
     features = []
@@ -323,7 +332,10 @@ def main():
             feat_names.append('int'+str(i))
         print('int feat done')
 
-    save_features(features, ids, feat_names, './'+args.outfile+date+'.npz')
+    if args.outdir[-1] != '/':
+        args.outdir+= '/'
+    save_features(features, ids, feat_names, args.outfile+'_'+date,outdir=args.outdir)
+    save_features(features, ids, feat_names, args.outfile,outdir=args.outdir)
 
 
 if __name__ == '__main__':
