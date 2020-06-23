@@ -255,7 +255,7 @@ def get_decodings(decoder, encoder, sequence, lms, encodingN, sequence_len, plot
             plt.show()
 
 
-def save_model(model, encodingN, LSTMN, model_dir='models/', outdir = './'):
+def save_model(model, encodingN, LSTMN, model_dir='models/', outdir='./'):
     # make output dir
     model_dir = outdir + model_dir
     if not os.path.exists(model_dir):
@@ -276,7 +276,7 @@ def save_model(model, encodingN, LSTMN, model_dir='models/', outdir = './'):
 
 def save_encodings(model, encoder, sequence, ids, INPUT_FILE,
                    encodingN, LSTMN, N, sequence_len,
-                   model_dir='encodings/', outdir = './'):
+                   model_dir='encodings/', outdir='./'):
 
     # Make output directory
     model_dir = outdir + model_dir
@@ -302,7 +302,8 @@ def save_encodings(model, encoder, sequence, ids, INPUT_FILE,
 def main():
     parser = ArgumentParser()
     parser.add_argument('lcfile', type=str, help='Light curve file')
-    parser.add_argument('--outdir', type=str, default='./products/', help='Path in which to save the LC data (single file)')
+    parser.add_argument('--outdir', type=str, default='./products/',
+                        help='Path in which to save the LC data (single file)')
     parser.add_argument('--plot', type=bool, default=False, help='Plot LCs')
     parser.add_argument('--neuronN', type=int, default=NEURON_N_DEFAULT, help='Number of neurons in hidden layers')
     parser.add_argument('--encodingN', type=int, default=ENCODING_N_DEFAULT,
@@ -336,9 +337,8 @@ def main():
     # get_decodings(decoder, encoder, sequence, lms, args.encodingN, \
     #               maxlen, plot=False)
 
-
     if args.outdir[-1] != '/':
-        args.outdir+= '/'
+        args.outdir += '/'
     save_model(model, args.encodingN, args.neuronN, outdir=args.outdir)
 
     save_encodings(model, encoder, sequence, ids, args.lcfile,

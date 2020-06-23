@@ -9,5 +9,6 @@ sphinx
 ipython
 matplotlib
 numpydoc
+scikit-learn
 sphinx-copybutton
 sphinx_rtd_theme

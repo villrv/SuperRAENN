@@ -225,7 +225,8 @@ def save_features(features, ids, feat_names, outputfile, outdir):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('lcfile', type=str, help='Light curve file')
-    parser.add_argument('--outdir', type=str, default='./products/', help='Path in which to save the LC data (single file)')
+    parser.add_argument('--outdir', type=str, default='./products/',
+                        help='Path in which to save the LC data (single file)')
     parser.add_argument('--plot', type=str2bool, default=False, help='Plot LCs, for testing')
     parser.add_argument('--model-base', type=str, dest='model_base', default='./products/models/model', help='...')
     parser.add_argument('--get-feat-raenn', type=str2bool, dest='get_feat_raenn', default=True, help='...')
@@ -333,9 +334,9 @@ def main():
         print('int feat done')
 
     if args.outdir[-1] != '/':
-        args.outdir+= '/'
-    save_features(features, ids, feat_names, args.outfile+'_'+date,outdir=args.outdir)
-    save_features(features, ids, feat_names, args.outfile,outdir=args.outdir)
+        args.outdir += '/'
+    save_features(features, ids, feat_names, args.outfile+'_'+date, outdir=args.outdir)
+    save_features(features, ids, feat_names, args.outfile, outdir=args.outdir)
 
 
 if __name__ == '__main__':

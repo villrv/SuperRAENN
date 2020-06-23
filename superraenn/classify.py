@@ -218,8 +218,10 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('metatable', type=str, default='', help='Get training set labels')
     parser.add_argument('--featurefile', default='./products/feat.npz', type=str, help='Feature file')
-    parser.add_argument('--outdir', type=str, default='./products/', help='Path in which to save the LC data (single file)')
-    parser.add_argument('--train', action='store_true', help='Train classification model')
+    parser.add_argument('--outdir', type=str, default='./products/',
+                        help='Path in which to save the LC data (single file)')
+    parser.add_argument('--train', action='store_true',
+                        help='Train classification model')
     parser.add_argument('--savemodel', action='store_true', help='Save output model, training on full set')
     parser.add_argument('--add-random', dest='add_random', type=bool, default=False,
                         help='Add random number as feature (for testing)')
@@ -340,7 +342,7 @@ def main():
             if not os.path.exists(args.outdir):
                 os.makedirs(args.outdir)
             if args.outdir[-1] != '/':
-                args.outdir+= '/'
+                args.outdir += '/'
             pickle.dump([clf, means, stds], open(args.outdir+args.modelfile+'_'+date+'.sav', 'wb'))
             pickle.dump([clf, means, stds], open(args.outdir+args.modelfile+'.sav', 'wb'))
 
@@ -351,21 +353,21 @@ def main():
         stds = info[2]
         X, names, means, stds, feature_names = prep_data_for_classifying(args.featurefile, means, stds)
         names = np.asarray(names, dtype=str)
-        probabilities = np.zeros((len(names),len(sn_dict)))
+        probabilities = np.zeros((len(names), len(sn_dict)))
         for i, name in enumerate(names):
             probabilities[i] = loaded_model.predict_proba([X[i]])[0]
-            #print(name, " ".join([str(e) for e in loaded_model.predict_proba([X[i]])[0]]))
-        probability_table = QTable(np.vstack((names,probabilities.T)).T, 
-                                   names=['Event Name',*sn_dict],
-                                   meta={'name':'SuperRAENN probabilities'})
+        probability_table = QTable(np.vstack((names, probabilities.T)).T,
+                                   names=['Event Name', *sn_dict],
+                                   meta={'name': 'SuperRAENN probabilities'})
 
         # save the model to disk
         if not os.path.exists(args.outdir):
             os.makedirs(args.outdir)
         if args.outdir[-1] != '/':
-            args.outdir+= '/'
+            args.outdir += '/'
         ascii.write(probability_table, args.outdir+args.outfile+'.tex',
                     format='latex', overwrite=True)
+
 
 if __name__ == '__main__':
     main()
