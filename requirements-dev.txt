@@ -9,7 +9,7 @@ sphinx
 ipython
 matplotlib
 numpydoc
-numpy=>1.16.0
+numpy
 scikit-learn
 sphinx-copybutton
 sphinx_rtd_theme
