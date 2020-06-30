@@ -14,3 +14,4 @@ SuperRAENN is an open-source Python package for the photometric classification o
    installation
    usage
    api
+   release-history
