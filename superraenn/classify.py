@@ -271,10 +271,13 @@ def main():
                 X_train, X_test = X[train_index], X[test_index]
                 y_train, y_test = y[train_index], y[test_index]
 
+                #if y_test[0]!=1:
+                #    continue
+
                 if args.resampling == 'Gauss':
-                    X_res, y_res = Gauss_resample(X_train, y_train, 400)
+                    X_res, y_res = Gauss_resample(X_train, y_train, 500)
                 else:
-                    X_res, y_res = KDE_resample(X_train, y_train, 400)
+                    X_res, y_res = KDE_resample(X_train, y_train, 500)
 
                 new_ind = np.arange(len(y_res), dtype=int)
                 np.random.shuffle(new_ind)
@@ -282,12 +285,12 @@ def main():
                 y_res = y_res[new_ind]
 
                 if args.calc_importance:
-                    X_res2, y_res2 = Gauss_resample(X_train, y_train, 400)
+                    X_res2, y_res2 = Gauss_resample(X_train, y_train, 500)
                     X_res2 = X_res2[:-40, :]
                     y_res2 = y_res2[:-40]
 
                 if args.add_random:
-                    X_res2, y_res2 = Gauss_resample(X_train, y_train, 400)
+                    X_res2, y_res2 = Gauss_resample(X_train, y_train, 500)
                     X_res2 = X_res2[:-40, :]
                     y_res2 = y_res2[:-40]
                     X_res = np.vstack((X_res.T, np.random.randn(len(X_res)))).T
@@ -324,16 +327,16 @@ def main():
             print(cnf_matrix)
         if args.savemodel:
             if args.resampling == 'Gauss':
-                X_res, y_res = Gauss_resample(X, y, 400)
+                X_res, y_res = Gauss_resample(X, y, 500)
             else:
-                X_res, y_res = KDE_resample(X, y, 400)
+                X_res, y_res = KDE_resample(X, y, 500)
 
             new_ind = np.arange(len(y_res), dtype=int)
             np.random.shuffle(new_ind)
             X_res = X_res[new_ind]
             y_res = y_res[new_ind]
 
-            clf = RandomForestClassifier(n_estimators=300, max_depth=None,
+            clf = RandomForestClassifier(n_estimators=350, max_depth=None,
                                          random_state=args.randomseed, criterion='gini', class_weight='balanced',
                                          max_features=None, oob_score=False)
             clf.fit(X_res, y_res)
