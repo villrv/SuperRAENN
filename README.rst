@@ -17,16 +17,16 @@ SuperRAENN is an open-source Python 3.x package for the photometric classificati
 Installation
 --------
 
-`superraenn' is available with `pip':
+`superraenn` is available with `pip`:
 
 
-```bash
+```
 pip install superraenn
 ```
 
 For a development install, clone this directory:
 
-```bash
+```
 git clone https://github.com/villrv/superraenn.git
 cd superraenn
 python setup.py develop
