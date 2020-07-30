@@ -271,9 +271,6 @@ def main():
                 X_train, X_test = X[train_index], X[test_index]
                 y_train, y_test = y[train_index], y[test_index]
 
-                #if y_test[0]!=1:
-                #    continue
-
                 if args.resampling == 'Gauss':
                     X_res, y_res = Gauss_resample(X_train, y_train, 500)
                 else:
