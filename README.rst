@@ -31,8 +31,3 @@ git clone https://github.com/villrv/superraenn.git
 cd superraenn
 python setup.py develop
 ```
-
-
-git clone https://github.com/guillochon/MOSFiT.git
-cd MOSFiT
-python setup.py develop
