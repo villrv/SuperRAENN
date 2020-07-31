@@ -19,7 +19,7 @@ SuperRAENN is an open-source Python 3.x package for the photometric classificati
 
 
 Installation
---------
+------------
 
 `superraenn` is available with `pip`:
 
