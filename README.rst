@@ -2,6 +2,8 @@
 superRAENN
 ==========
 
+[![DOI](https://zenodo.org/badge/253530456.svg)](https://zenodo.org/badge/latestdoi/253530456)
+
 .. image:: https://img.shields.io/travis/villrv/superraenn.svg
         :target: https://travis-ci.org/villrv/superraenn
 
@@ -20,14 +22,14 @@ Installation
 `superraenn` is available with `pip`:
 
 
-```
+``
 pip install superraenn
-```
+``
 
 For a development install, clone this directory:
 
-```
+``
 git clone https://github.com/villrv/superraenn.git
 cd superraenn
 python setup.py develop
-```
+``
