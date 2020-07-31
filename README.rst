@@ -15,7 +15,7 @@ superRAENN
 SuperRAENN is an open-source Python 3.x package for the photometric classification of supernovae in the following categories: Type I superluminos supernovae, Type II, Type IIn, Type Ia and Type Ib/c. It is described in detail in Villar et al. (in prep.). SuperRAENN is optimized for use with complete (rather than realtime) light curves from the Pan-STARRS Medium Deep Survey. *Users will need to train the classifier on their own data for optimal results.*
 
 * Free software: 3-clause BSD license
-* Documentation is available {\field{\*\fldinst HYPERLINK "here/"}{\fldrslt https://superraenn.readthedocs.io/en/latest/}}
+* Documentation is available here: https://superraenn.readthedocs.io/en/latest/
 
 
 Installation
