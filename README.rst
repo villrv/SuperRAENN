@@ -2,7 +2,8 @@
 superRAENN
 ==========
 
-[![DOI](https://zenodo.org/badge/253530456.svg)](https://zenodo.org/badge/latestdoi/253530456)
+.. image:: https://zenodo.org/badge/253530456.svg
+   :target: https://zenodo.org/badge/latestdoi/253530456
 
 .. image:: https://img.shields.io/travis/villrv/superraenn.svg
         :target: https://travis-ci.org/villrv/superraenn
