@@ -8,8 +8,8 @@ import os
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', level=logging.INFO)
 
 # Default fitting parameters
-DEFAULT_ZPT = 27.5
-DEFAULT_LIM_MAG = 25.0
+DEFAULT_ZPT = 0.0#27.5
+DEFAULT_LIM_MAG = 21.0 #25.0
 
 
 def read_in_meta_table(metatable):
@@ -92,6 +92,9 @@ def main():
     parser.add_argument('--lm', type=float, default=DEFAULT_LIM_MAG, help='Survey limiting magnitude')
     parser.add_argument('--outdir', type=str, default='./products/',
                         help='Path in which to save the LC data (single file)')
+    parser.add_argument('--datatype', type=str, default = 'LSST', help='LSST (PS1) or ZTF')
+    parser.add_argument('--datastyle', type=str, default = 'text', help='SNANA or text')
+    parser.add_argument('--shifttype', type=str, default = 'input', help='how to shift time. Input time or peak')
     args = parser.parse_args()
 
     objs, redshifts, obj_types, peaks, ebvs = read_in_meta_table(args.metatable)
@@ -99,16 +102,25 @@ def main():
     # Grab all the LC files in the input directory
     file_names = []
     for obj in objs:
-        file_name = args.datadir + 'PS1_PS1MD_' + obj + '.snana.dat'
+        if args.datastyle == 'SNANA':
+            file_name = args.datadir + 'PS1_PS1MD_' + obj + '.snana.dat'
+        else:
+            file_name = args.datadir + obj + '.txt'
+
         file_names.append(file_name)
 
     # Create a list of LC objects from the data files
-    lc_list = read_in_LC_files(file_names, objs)
+    lc_list = read_in_LC_files(file_names, objs, datastyle=args.datastyle)
 
     # This needs to be redone when retrained
-    # TODO: Need to change this whenever you retrain...
-    filt_dict = {'g': 0, 'r': 1, 'i': 2, 'z': 3}
-    wvs = np.asarray([5460, 6800, 7450, 8700])
+    if (args.datatype == 'LSST') or (args.datatype == 'PS1'):
+        filt_dict = {'g': 0, 'r': 1, 'i': 2, 'z': 3}
+        wvs = np.asarray([5460, 6800, 7450, 8700])
+        nfilt = 4
+    else:
+        filt_dict = {'g': 0, 'r': 1}
+        wvs = np.asarray([5460, 6800])
+        nfilt = 2
 
     # Update the LC objects with info from the metatable
     my_lcs = []
@@ -117,14 +129,24 @@ def main():
                           redshift=redshifts[i], lim_mag=args.lm,
                           obj_type=obj_types[i])
         my_lc.get_abs_mags()
+
+        if np.inf in my_lc.abs_mags:
+            continue
+
         my_lc.sort_lc()
-        pmjd = my_lc.find_peak(peaks[i])
+
+        if args.shifttype == 'peak':
+            pmjd = my_lc.find_peak(peaks[i])
+        else:
+            pmjd = peaks[i]
         my_lc.shift_lc(pmjd)
         my_lc.correct_time_dilation()
         my_lc.filter_names_to_numbers(filt_dict)
         my_lc.correct_extinction(wvs)
         my_lc.cut_lc()
-        my_lc.make_dense_LC(4)
+        if my_lc.times.size < 5:
+            continue
+        my_lc.make_dense_LC(nfilt)
         my_lcs.append(my_lc)
     save_lcs(my_lcs, args.outdir)
 

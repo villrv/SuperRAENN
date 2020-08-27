@@ -26,7 +26,7 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def read_in_LC_files(input_files, obj_names, style='SNANA'):
+def read_in_LC_files(input_files, obj_names, datastyle='SNANA'):
     """
     Read in LC files and convert to LC object
 
@@ -48,7 +48,7 @@ def read_in_LC_files(input_files, obj_names, style='SNANA'):
     --------
     """
     LC_list = []
-    if style == 'SNANA':
+    if datastyle == 'SNANA':
         for i, input_file in enumerate(input_files):
             t, f, filts, err = np.genfromtxt(input_file,
                                              usecols=(1, 4, 2, 5), skip_header=18,
@@ -56,6 +56,35 @@ def read_in_LC_files(input_files, obj_names, style='SNANA'):
             t = np.asarray(t, dtype=float)
             f = np.asarray(f, dtype=float)
             err = np.asarray(err, dtype=float)
+
+            sn_name = obj_names[i]
+            new_LC = LightCurve(sn_name, t, f, err, filts)
+            LC_list.append(new_LC)
+    elif datastyle == 'text':
+        for i, input_file in enumerate(input_files):
+            t, f, filts, err, source, upperlim = np.genfromtxt(input_file,
+                                                                usecols=(0, 1, 4, 2, 3, 6),
+                                                                dtype=str, skip_header=1,
+                                                                unpack=True)
+            t = np.asarray(t, dtype=float)
+            f = np.asarray(f, dtype=float)
+            err = np.asarray(err, dtype=float)
+            filters = np.asarray(filts, dtype=str)
+
+            f = 10.**(f / -2.5)
+            const = np.log(10) / 2.5
+            err = err * f / (1.086)
+            if t.size <5:
+                continue
+
+            gind = np.where((source=='ZTF') & (upperlim == 'False'))
+            t = t[gind]
+            f = f[gind]
+            err = err[gind]
+            filts = filts[gind]
+
+            if t.size <5:
+                continue
 
             sn_name = obj_names[i]
             new_LC = LightCurve(sn_name, t, f, err, filts)

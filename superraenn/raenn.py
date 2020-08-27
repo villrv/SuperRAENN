@@ -19,6 +19,7 @@ date = str(now.strftime("%Y-%m-%d"))
 NEURON_N_DEFAULT = 100
 ENCODING_N_DEFAULT = 10
 N_EPOCH_DEFAULT = 1000
+nfilts = 2
 
 
 def customLoss(yTrue, yPred):
@@ -32,7 +33,10 @@ def customLoss(yTrue, yPred):
     yPred : array
         Predicted flux values
     """
-    return K.mean(K.square(yTrue[:, :, 1:5] - yPred[:, :, :]))
+
+    global nfilts
+
+    return K.mean(K.square(yTrue[:, :, 1:(1+nfilts)] - yPred[:, :, :]))
 
 
 def prep_input(input_lc_file, new_t_max=100.0, filler_err=1.0,
@@ -313,6 +317,8 @@ def main():
                         help='Number of epochs to train for')
 
     args = parser.parse_args()
+
+    global nfilts
 
     sequence, outseq, ids, maxlen, nfilts = prep_input(args.lcfile, save=True, outdir=args.outdir)
 
