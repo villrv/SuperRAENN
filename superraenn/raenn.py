@@ -165,7 +165,7 @@ def make_model(LSTMN, encodingN, maxlen, nfilts):
     decoder2 = TimeDistributed(Dense(nfilts, activation='tanh'),
                                input_shape=(None, 1))(decoder1)
 
-    model = Model(input=[input_1, input_2], output=decoder2)
+    model = Model([input_1, input_2], decoder2)
 
     new_optimizer = Adam(lr=1e-4, beta_1=0.9, beta_2=0.999,
                          decay=0)
@@ -220,7 +220,7 @@ def test_model(sequence_test, model, lms, sequence_len, plot=True):
 
 
 def get_encoder(model, input_1, encoded):
-    encoder = Model(input=input_1, output=encoded)
+    encoder = Model(input_1, encoded)
     return encoder
 
 
@@ -228,15 +228,14 @@ def get_decoder(model, encodingN):
     encoded_input = Input(shape=(None, (encodingN+2)))
     decoder_layer2 = model.layers[-2]
     decoder_layer3 = model.layers[-1]
-    decoder = Model(input=encoded_input, output=decoder_layer3(decoder_layer2(encoded_input)))
+    decoder = Model(encoded_input, decoder_layer3(decoder_layer2(encoded_input)))
     return decoder
 
 
-def get_decodings(decoder, encoder, sequence, lms, encodingN, sequence_len, plot=True):
-
+def get_decodings(decoder, encoder, sequence, lms, encodingN, sequence_len, nfilts, plot=True):
     if plot:
         for i in np.arange(len(sequence)):
-            seq = np.reshape(sequence[i, :, :], (1, sequence_len, 9))
+            seq = np.reshape(sequence[i, :, :], (1, sequence_len, (nfilts*2+1)))
             encoding1 = encoder.predict(seq)[-1]
             encoding1 = np.vstack([encoding1]).reshape((1, 1, encodingN))
             repeater1 = np.repeat(encoding1, sequence_len, axis=1)
@@ -252,10 +251,10 @@ def get_decodings(decoder, encoder, sequence, lms, encodingN, sequence_len, plot
             plt.plot(seq[0, :, 0], decoding2[:, 0], 'green', alpha=0.2, linewidth=10)
             plt.plot(seq[0, :, 0], seq[0, :, 2], 'red', alpha=1.0, linewidth=1)
             plt.plot(seq[0, :, 0], decoding2[:, 1], 'red', alpha=0.2, linewidth=10)
-            plt.plot(seq[0, :, 0], seq[0, :, 3], 'orange', alpha=1.0, linewidth=1)
-            plt.plot(seq[0, :, 0], decoding2[:, 2], 'orange', alpha=0.2, linewidth=10)
-            plt.plot(seq[0, :, 0], seq[0, :, 4], 'purple', alpha=1.0, linewidth=1)
-            plt.plot(seq[0, :, 0], decoding2[:, 3], 'purple', alpha=0.2, linewidth=10)
+            #plt.plot(seq[0, :, 0], seq[0, :, 3], 'orange', alpha=1.0, linewidth=1)
+            #plt.plot(seq[0, :, 0], decoding2[:, 2], 'orange', alpha=0.2, linewidth=10)
+            #plt.plot(seq[0, :, 0], seq[0, :, 4], 'purple', alpha=1.0, linewidth=1)
+            #plt.plot(seq[0, :, 0], decoding2[:, 3], 'purple', alpha=0.2, linewidth=10)
             plt.show()
 
 
@@ -279,7 +278,7 @@ def save_model(model, encodingN, LSTMN, model_dir='models/', outdir='./'):
 
 
 def save_encodings(model, encoder, sequence, ids, INPUT_FILE,
-                   encodingN, LSTMN, N, sequence_len,
+                   encodingN, LSTMN, N, sequence_len,nfilts,
                    model_dir='encodings/', outdir='./'):
 
     # Make output directory
@@ -289,7 +288,7 @@ def save_encodings(model, encoder, sequence, ids, INPUT_FILE,
 
     encodings = np.zeros((N, encodingN))
     for i in np.arange(N):
-        seq = np.reshape(sequence[i, :, :], (1, sequence_len, 9))
+        seq = np.reshape(sequence[i, :, :], (1, sequence_len, (nfilts*2+1)))
 
         my_encoding = encoder.predict(seq)
 
@@ -348,7 +347,7 @@ def main():
     save_model(model, args.encodingN, args.neuronN, outdir=args.outdir)
 
     save_encodings(model, encoder, sequence, ids, args.lcfile,
-                   args.encodingN, args.neuronN, len(ids), maxlen,
+                   args.encodingN, args.neuronN, len(ids), maxlen,nfilts,
                    outdir=args.outdir)
 
 

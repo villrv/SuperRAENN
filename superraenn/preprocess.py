@@ -92,7 +92,7 @@ def main():
     parser.add_argument('--lm', type=float, default=DEFAULT_LIM_MAG, help='Survey limiting magnitude')
     parser.add_argument('--outdir', type=str, default='./products/',
                         help='Path in which to save the LC data (single file)')
-    parser.add_argument('--datatype', type=str, default = 'LSST', help='LSST (PS1) or ZTF')
+    parser.add_argument('--datatype', type=str, default = 'ZTF', help='LSST (PS1) or ZTF')
     parser.add_argument('--datastyle', type=str, default = 'text', help='SNANA or text')
     parser.add_argument('--shifttype', type=str, default = 'input', help='how to shift time. Input time or peak')
     args = parser.parse_args()
