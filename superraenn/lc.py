@@ -42,6 +42,9 @@ class LightCurve(object):
                         (self.fluxes/self.flux_errs > 3.0))
         if len(gind[0]) == 0:
             gind = np.where((np.abs(self.times - tpeak_guess) < 100.0))
+        if len(gind[0]) == 0:
+            tpeak = tpeak_guess
+            return tpeak
         if self.abs_mags is not None:
             tpeak = self.times[gind][np.argmin(self.abs_mags[gind])]
         return tpeak
@@ -129,7 +132,7 @@ class LightCurve(object):
         dense_errs = np.zeros((len(self.times), nfilts))
         stacked_data = np.vstack([self.times, self.filters]).T
         x_pred = np.zeros((len(self.times)*nfilts, 2))
-        kernel = np.var(gp_mags) * george.kernels.ExpSquaredKernel([100, 1], ndim=2)
+        kernel = np.var(gp_mags) * george.kernels.ExpSquaredKernel([3, 1], ndim=2)
         gp = george.GP(kernel)
         gp.compute(stacked_data, self.abs_mags_err)
 
@@ -142,9 +145,10 @@ class LightCurve(object):
             return -gp.grad_log_likelihood(gp_mags)
 
         result = scipy.optimize.minimize(neg_ln_like,
-                                         gp.get_parameter_vector(),
-                                         jac=grad_neg_ln_like)
+                                             gp.get_parameter_vector(),
+                                             jac=grad_neg_ln_like)
         gp.set_parameter_vector(result.x)
+
         for jj, time in enumerate(self.times):
             x_pred[jj*nfilts:jj*nfilts+nfilts, 0] = [time]*nfilts
             x_pred[jj*nfilts:jj*nfilts+nfilts, 1] = np.arange(nfilts)

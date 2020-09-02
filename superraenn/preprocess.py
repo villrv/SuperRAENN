@@ -94,7 +94,7 @@ def main():
                         help='Path in which to save the LC data (single file)')
     parser.add_argument('--datatype', type=str, default = 'ZTF', help='LSST (PS1) or ZTF')
     parser.add_argument('--datastyle', type=str, default = 'text', help='SNANA or text')
-    parser.add_argument('--shifttype', type=str, default = 'input', help='how to shift time. Input time or peak')
+    parser.add_argument('--shifttype', type=str, default = 'peak', help='how to shift time. Input time or peak')
     args = parser.parse_args()
 
     objs, redshifts, obj_types, peaks, ebvs = read_in_meta_table(args.metatable)
@@ -134,6 +134,8 @@ def main():
             continue
 
         my_lc.sort_lc()
+        if my_lc.times.size < 5:
+            continue
 
         if args.shifttype == 'peak':
             pmjd = my_lc.find_peak(peaks[i])
@@ -144,9 +146,11 @@ def main():
         my_lc.filter_names_to_numbers(filt_dict)
         my_lc.correct_extinction(wvs)
         my_lc.cut_lc()
-        if my_lc.times.size < 5:
+        # NEED TO FIX THIS -- power is off lol
+        try:
+            my_lc.make_dense_LC(nfilt)
+        except:
             continue
-        my_lc.make_dense_LC(nfilt)
         my_lcs.append(my_lc)
     save_lcs(my_lcs, args.outdir)
 

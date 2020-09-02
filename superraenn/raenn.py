@@ -35,11 +35,9 @@ def customLoss(yTrue, yPred):
     """
 
     global nfilts
+    return K.mean(K.square(yTrue[:, :, 1:(1+nfilts)] - yPred[:, :, :])/K.square(yTrue[:,:,(1+nfilts):]))
 
-    return K.mean(K.square(yTrue[:, :, 1:(1+nfilts)] - yPred[:, :, :]))
-
-
-def prep_input(input_lc_file, new_t_max=100.0, filler_err=1.0,
+def prep_input(input_lc_file, new_t_max=10.0, filler_err=1.0,
                save=False, load=False, outdir=None, prep_file=None):
     """
     Prep input file for fitting
@@ -92,7 +90,7 @@ def prep_input(input_lc_file, new_t_max=100.0, filler_err=1.0,
     for i, lightcurve in enumerate(lightcurves):
         sequence[i, 0:lengths[i], 0] = lightcurve.times
         sequence[i, 0:lengths[i], 1:nfiltsp1] = lightcurve.dense_lc[:, :, 0]
-        sequence[i, 0:lengths[i], nfiltsp1:] = lightcurve.dense_lc[:, :, 1]
+        sequence[i, 0:lengths[i], nfiltsp1:] = lightcurve.dense_lc[:, :, 1] + 0.01
         sequence[i, lengths[i]:, 0] = np.max(lightcurve.times)+new_t_max
         sequence[i, lengths[i]:, 1:nfiltsp1] = lightcurve.abs_lim_mag
         sequence[i, lengths[i]:, nfiltsp1:] = filler_err
@@ -111,8 +109,8 @@ def prep_input(input_lc_file, new_t_max=100.0, filler_err=1.0,
 
     sequence[:, :, 1:nfiltsp1] = (sequence[:, :, 1:nfiltsp1] - bandmin) \
         / (bandmax - bandmin)
-    sequence[:, :, nfiltsp1:] = (sequence[:, :, nfiltsp1:]) \
-        / (bandmax - bandmin)
+    #sequence[:, :, nfiltsp1:] = sequence[:, :, nfiltsp1:] \
+     #   / (bandmax - bandmin)
 
     new_lms = np.reshape(np.repeat(lms, sequence_len), (len(lms), -1))
 
@@ -232,7 +230,8 @@ def get_decoder(model, encodingN):
     return decoder
 
 
-def get_decodings(decoder, encoder, sequence, lms, encodingN, sequence_len, nfilts, plot=True):
+def get_decodings(decoder, encoder, sequence, lms, encodingN, sequence_len,
+                nfilts, ids, plot=True):
     if plot:
         for i in np.arange(len(sequence)):
             seq = np.reshape(sequence[i, :, :], (1, sequence_len, (nfilts*2+1)))
@@ -247,10 +246,11 @@ def get_decodings(decoder, encoder, sequence, lms, encodingN, sequence_len, nfil
 
             decoding2 = decoder.predict(decoding_input2)[0]
 
-            plt.plot(seq[0, :, 0], seq[0, :, 1], 'green', alpha=1.0, linewidth=1)
+            plt.plot(seq[0, :, 0], seq[0, :, 1], 'o',color='green', alpha=1.0, linewidth=1)
             plt.plot(seq[0, :, 0], decoding2[:, 0], 'green', alpha=0.2, linewidth=10)
-            plt.plot(seq[0, :, 0], seq[0, :, 2], 'red', alpha=1.0, linewidth=1)
+            plt.plot(seq[0, :, 0], seq[0, :, 2], 'o',color='red', alpha=1.0, linewidth=1)
             plt.plot(seq[0, :, 0], decoding2[:, 1], 'red', alpha=0.2, linewidth=10)
+            plt.title(ids[i])
             #plt.plot(seq[0, :, 0], seq[0, :, 3], 'orange', alpha=1.0, linewidth=1)
             #plt.plot(seq[0, :, 0], decoding2[:, 2], 'orange', alpha=0.2, linewidth=10)
             #plt.plot(seq[0, :, 0], seq[0, :, 4], 'purple', alpha=1.0, linewidth=1)
@@ -320,7 +320,6 @@ def main():
     global nfilts
 
     sequence, outseq, ids, maxlen, nfilts = prep_input(args.lcfile, save=True, outdir=args.outdir)
-
     if args.plot:
         for s in sequence:
             plt.plot(s[:, 0], s[:, 1])
